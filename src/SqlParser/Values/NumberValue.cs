@@ -1,6 +1,4 @@
-﻿using System;
-
-namespace SqlParser.Values
+﻿namespace SqlParser.Values
 {
     public sealed class NumberValue : SqlValue
     {
@@ -8,14 +6,16 @@ namespace SqlParser.Values
 
         public static readonly NumberValue Zero = new NumberValue(0M);
 
-        public NumberValue(decimal value) : base(value)
+        public NumberValue(decimal value)
         {
             _value = value;
         }
 
+        public override decimal ToNumberValue() => _value;
+
         public override bool Equals(SqlValue other)
             => other is NumberValue
-                ? _value == Convert.ToDecimal(other.Value)
+                ? _value == other.ToNumberValue()
                 : false;
     }
 }

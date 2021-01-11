@@ -1,5 +1,4 @@
 ﻿using SqlParser.Values;
-using System;
 using System.Threading.Tasks;
 
 namespace SqlParser.Expressions
@@ -14,7 +13,7 @@ namespace SqlParser.Expressions
         {
             var left = await Left.EvaluateAsync();
             var right = await Right.EvaluateAsync();
-            var division = Convert.ToDecimal(left.Value) / Convert.ToDecimal(right.Value);
+            var division = left.ToNumberValue() / right.ToNumberValue();
 
             return new NumberValue(division);
         }

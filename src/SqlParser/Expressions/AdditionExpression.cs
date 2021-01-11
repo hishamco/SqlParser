@@ -14,7 +14,7 @@ namespace SqlParser.Expressions
         {
             var left = await Left.EvaluateAsync();
             var right = await Right.EvaluateAsync();
-            var addition = Convert.ToDecimal(left.Value) + Convert.ToDecimal(right.Value);
+            var addition = left.ToNumberValue() + right.ToNumberValue();
 
             return new NumberValue(addition);
         }

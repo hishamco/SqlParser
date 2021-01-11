@@ -1,5 +1,4 @@
 ﻿using SqlParser.Values;
-using System;
 using System.Threading.Tasks;
 
 namespace SqlParser.Expressions
@@ -14,7 +13,7 @@ namespace SqlParser.Expressions
         {
             var innerExpressionValue = await InnerExpression.EvaluateAsync();
 
-            return new NumberValue(-1 * Convert.ToDecimal(innerExpressionValue.Value));
+            return new NumberValue(-1 * innerExpressionValue.ToNumberValue());
         }
     }
 }

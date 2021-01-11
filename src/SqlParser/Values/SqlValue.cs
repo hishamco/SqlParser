@@ -4,13 +4,6 @@ namespace SqlParser.Values
 {
     public abstract class SqlValue : IEquatable<SqlValue>
     {
-        public SqlValue(object value)
-        {
-            Value = value;
-        }
-
-        public object Value { get; }
-
         public static SqlValue Create(object value)
         {
             if (value is SqlValue sqlValue)
@@ -40,6 +33,12 @@ namespace SqlParser.Values
                     throw new InvalidOperationException();
             }
         }
+
+        public virtual bool ToBooleanValue() => false;
+
+        public virtual decimal ToNumberValue() => 0M;
+
+        public virtual string ToStringValue() => String.Empty;
 
         public abstract bool Equals(SqlValue other);
     }

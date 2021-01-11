@@ -8,14 +8,16 @@ namespace SqlParser.Values
 
         public static StringValue Empty = new StringValue(String.Empty);
 
-        public StringValue(string value) : base(value)
+        public StringValue(string value)
         {
             _value = value;
         }
 
+        public override string ToStringValue() => _value;
+
         public override bool Equals(SqlValue other)
             => other is StringValue
-                ? _value == Convert.ToString(other.Value)
+                ? _value == other.ToStringValue()
                 : false;
     }
 }
