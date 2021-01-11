@@ -55,7 +55,7 @@ namespace SqlParser
             var identifier = Terms.Identifier()
                 .Then<Expression>(e => new IdentifierExpression(e.Buffer));
             var groupExpression = Between(OpenParen, expression, CloseParen);
-            var terminal = number.Or(boolean).Or(stringLiteral).Or(identifier);
+            var terminal = number.Or(boolean).Or(stringLiteral).Or(identifier).Or(groupExpression);
             var unary = Recursive<Expression>(e => Minus.And(e)
                 .Then<Expression>(e => new NegateExpression(e.Item2)).Or(terminal));
             var factor = unary.And(ZeroOrMany(Times.Or(Divided).Or(Modulo).And(unary)))

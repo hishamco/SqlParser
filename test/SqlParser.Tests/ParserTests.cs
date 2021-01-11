@@ -85,6 +85,24 @@ namespace SqlParser.Tests
         }
 
         [Theory]
+        [InlineData("(120)", 120)]
+        [InlineData("(12.3)", 12.3)]
+        public async Task ParseGroupExpression(string text, decimal expected)
+        {
+            // Arrange
+            var context = new SqlParseContext(text);
+            var result = new ParseResult<Expression>();
+
+            // Arrange
+            Parser.Expression.Parse(context, ref result);
+
+            var value = await (result.Value as NumericExpression).EvaluateAsync();
+
+            // Assert
+            Assert.Equal(new NumberValue(expected), value);
+        }
+
+        [Theory]
         [InlineData("5+2", 7)]
         [InlineData("5-2", 3)]
         [InlineData("5*2", 10)]
