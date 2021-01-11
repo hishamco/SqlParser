@@ -83,5 +83,29 @@ namespace SqlParser.Tests
             // Assert
             Assert.Equal(new StringValue(expected), value);
         }
+
+        [Theory]
+        [InlineData("5+2", 7)]
+        [InlineData("5-2", 3)]
+        [InlineData("5*2", 10)]
+        [InlineData("-5*2", -10)]
+        [InlineData("5/2", 2.5)]
+        [InlineData("5%2", 1)]
+        [InlineData("12*3-6+70", 100)]
+        [InlineData("150+50-5*5", 175)]
+        public async Task EvaluateArithmaticExpression(string text, decimal expected)
+        {
+            // Arrange
+            var context = new SqlParseContext(text);
+            var result = new ParseResult<Expression>();
+
+            // Arrange
+            Parser.Expression.Parse(context, ref result);
+
+            var value = await(result.Value as BinaryExpression).EvaluateAsync();
+
+            // Assert
+            Assert.Equal(new NumberValue(expected), value);
+        }
     }
 }
