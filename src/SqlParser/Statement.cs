@@ -12,7 +12,7 @@ namespace SqlParser
 
         protected string CommandText { get; }
 
-        public IEnumerable<string> Tokens { get; protected set; }
+        public IEnumerable<Token> Tokens { get; protected set; }
 
         public abstract Task TokenizeAsync();
     }

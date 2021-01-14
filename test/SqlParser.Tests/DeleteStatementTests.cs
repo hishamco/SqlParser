@@ -10,7 +10,7 @@ namespace SqlParser.Tests
         [Theory]
         [InlineData("DELETE FROM Customers", "Customers")]
         [InlineData("delete from Customers", "Customers")]
-        public async Task ParseStringExpression(string text, string expected)
+        public async Task ParseDeleteStatement(string text, string expected)
         {
             // Arrange
             var statement = new DeleteStatement(text);
@@ -20,8 +20,8 @@ namespace SqlParser.Tests
 
             // Assert
             Assert.Equal(3, statement.Tokens.Count());
-            Assert.Equal("DELETE", statement.Tokens.ElementAt(0));
-            Assert.Equal("FROM", statement.Tokens.ElementAt(1));
+            Assert.Equal("DELETE", statement.Tokens.ElementAt(0).Value);
+            Assert.Equal("FROM", statement.Tokens.ElementAt(1).Value);
             Assert.Equal(expected, statement.TableName);
         }
     }

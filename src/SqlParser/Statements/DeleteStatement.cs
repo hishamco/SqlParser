@@ -18,7 +18,7 @@ namespace SqlParser.Statements
         protected static readonly Parser<string> Delete = Terms.Text("DELETE", caseInsensitive: true);
         protected static readonly Parser<string> From = Terms.Text("FROM", caseInsensitive: true);
 
-        private static readonly Deferred<IEnumerable<string>> _tokens = Deferred<IEnumerable<string>>();
+        private static readonly Deferred<IEnumerable<Token>> _tokens = Deferred<IEnumerable<Token>>();
 
         public string TableName { get; private set; }
 
@@ -27,7 +27,7 @@ namespace SqlParser.Statements
             var identifier = Terms.Identifier()
                 .Then<Expression>(e => new IdentifierExpression(e.Buffer));
             var deleteStatement = Delete.And(From).And(identifier);
-            _tokens.Parser = deleteStatement.Then<IEnumerable<string>>(e =>
+            _tokens.Parser = deleteStatement.Then<IEnumerable<Token>>(e =>
             {
                 var result = e.Item3.EvaluateAsync()
                     .GetAwaiter().GetResult()
@@ -36,7 +36,12 @@ namespace SqlParser.Statements
                 // TODO: Find a better way to skip a text while constructing a grammar
                 var tableName = result.Substring("DELETE FROM ".Length);
 
-                return new List<string> { e.Item1, e.Item2, tableName };
+                return new List<Token>
+                {
+                    new Token { Type = TokenType.Keyword, Value = e.Item1 },
+                    new Token { Type = TokenType.Keyword, Value = e.Item2 },
+                    new Token { Type = TokenType.Identifier, Value = tableName }
+                };
             });
         }
 
@@ -48,12 +53,12 @@ namespace SqlParser.Statements
         public async override Task TokenizeAsync()
         {
             var context = new SqlParseContext(CommandText);
-            var result = new ParseResult<IEnumerable<string>>();
+            var result = new ParseResult<IEnumerable<Token>>();
 
             _tokens.Parse(context, ref result);
 
             Tokens = result.Value;
-            TableName = Tokens.Last();
+            TableName = Tokens.Last().Value.ToString();
 
             await Task.CompletedTask;
         }
