@@ -4,6 +4,7 @@
     {
         Identifier,
         Keyword,
-        List
+        List,
+        Symbol
     }
 }
