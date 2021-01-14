@@ -1,5 +1,4 @@
-﻿using Parlot;
-using Parlot.Fluent;
+﻿using Parlot.Fluent;
 using SqlParser.Expressions;
 using System;
 using static Parlot.Fluent.Parsers;
@@ -51,9 +50,9 @@ namespace SqlParser
             var boolean = True.Or(False)
                 .Then<Expression>(e => new BooleanExpression(Convert.ToBoolean(e)));
             var stringLiteral = Terms.String(StringLiteralQuotes.SingleOrDouble)
-                .Then<Expression>(e => new LiteralExpression(e.Buffer.Substring(1, e.Buffer.Length - 2)));
+                .Then<Expression>(e => new LiteralExpression(e.ToString()));
             var identifier = Terms.Identifier()
-                .Then<Expression>(e => new IdentifierExpression(e.Buffer));
+                .Then<Expression>(e => new IdentifierExpression(e.ToString()));
             var groupExpression = Between(OpenParen, expression, CloseParen);
             var terminal = number.Or(boolean).Or(stringLiteral).Or(identifier).Or(groupExpression);
             var unary = Recursive<Expression>(e => Minus.And(e)

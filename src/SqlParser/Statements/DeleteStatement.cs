@@ -25,16 +25,14 @@ namespace SqlParser.Statements
         static DeleteStatement()
         {
             var identifier = Terms.Identifier()
-                .Then<Expression>(e => new IdentifierExpression(e.Buffer));
+                .Then<Expression>(e => new IdentifierExpression(e.ToString()));
             var deleteStatement = Delete.And(From).And(identifier);
             _tokens.Parser = deleteStatement.Then<IEnumerable<Token>>(e =>
             {
                 var result = e.Item3.EvaluateAsync()
                     .GetAwaiter().GetResult()
                     .ToStringValue();
-
-                // TODO: Find a better way to skip a text while constructing a grammar
-                var tableName = result.Substring("DELETE FROM ".Length);
+                var tableName = (e.Item3 as IdentifierExpression).Name;
 
                 return new List<Token>
                 {
