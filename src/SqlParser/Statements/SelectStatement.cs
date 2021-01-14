@@ -17,9 +17,6 @@ namespace SqlParser.Statements
      */
     public class SelectStatement : Statement
     {
-        protected static readonly Parser<char> OpenParen = Terms.Char('(');
-        protected static readonly Parser<char> CloseParen = Terms.Char(')');
-        protected static readonly Parser<char> Comma = Terms.Char(',');
         protected static readonly Parser<char> Asterisk = Terms.Char('*');
 
         protected static readonly Parser<string> Select = Terms.Text("SELECT", caseInsensitive: true);
@@ -36,7 +33,7 @@ namespace SqlParser.Statements
             var identifier = Terms.Identifier()
                 .Then<Expression>(e => new IdentifierExpression(e.ToString()));
             var columnsList = Asterisk.Then(e => new List<Expression> { new LiteralExpression(e.ToString()) })
-                .Or(Separated(Comma, identifier));
+                .Or(Separated(Parser.Comma, identifier));
             var selectStatement = Select.And(columnsList).And(From).And(identifier);
             _tokens.Parser = selectStatement.Then<IEnumerable<Token>>(e =>
             {

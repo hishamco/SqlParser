@@ -29,9 +29,6 @@ namespace SqlParser.Statements
             var deleteStatement = Delete.And(From).And(identifier);
             _tokens.Parser = deleteStatement.Then<IEnumerable<Token>>(e =>
             {
-                var result = e.Item3.EvaluateAsync()
-                    .GetAwaiter().GetResult()
-                    .ToStringValue();
                 var tableName = (e.Item3 as IdentifierExpression).Name;
 
                 return new List<Token>

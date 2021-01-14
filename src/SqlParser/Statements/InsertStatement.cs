@@ -20,13 +20,6 @@ namespace SqlParser.Statements
      */
     public class InsertStatement : Statement
     {
-        protected static readonly Parser<char> OpenParen = Terms.Char('(');
-        protected static readonly Parser<char> CloseParen = Terms.Char(')');
-        protected static readonly Parser<char> Comma = Terms.Char(',');
-
-        protected static readonly Parser<string> True = Terms.Text("True", caseInsensitive: true);
-        protected static readonly Parser<string> False = Terms.Text("False", caseInsensitive: true);
-
         protected static readonly Parser<string> Insert = Terms.Text("INSERT", caseInsensitive: true);
         protected static readonly Parser<string> Into = Terms.Text("INTO", caseInsensitive: true);
         protected static readonly Parser<string> Values = Terms.Text("VALUES", caseInsensitive: true);
@@ -41,15 +34,15 @@ namespace SqlParser.Statements
         {
             var number = Terms.Decimal(NumberOptions.AllowSign)
                 .Then<Expression>(e => new NumericExpression(e));
-            var boolean = True.Or(False)
+            var boolean = Parser.True.Or(Parser.False)
                 .Then<Expression>(e => new BooleanExpression(Convert.ToBoolean(e)));
             var stringLiteral = Terms.String(StringLiteralQuotes.SingleOrDouble)
                 .Then<Expression>(e => new LiteralExpression(e.ToString()));
             var identifier = Terms.Identifier()
                 .Then<Expression>(e => new IdentifierExpression(e.ToString()));
             var terminal = number.Or(boolean).Or(stringLiteral).Or(identifier);
-            var columnsList = ZeroOrOne(Between(OpenParen, Separated(Comma, identifier), CloseParen));
-            var valuesList = Between(OpenParen, Separated(Comma, terminal), CloseParen);
+            var columnsList = ZeroOrOne(Between(Parser.OpenParen, Separated(Parser.Comma, identifier), Parser.CloseParen));
+            var valuesList = Between(Parser.OpenParen, Separated(Parser.Comma, terminal), Parser.CloseParen);
             var insertStatement = Insert.And(Into).And(identifier).And(columnsList).And(Values).And(valuesList);
             _tokens.Parser = insertStatement.Then<IEnumerable<Token>>(e =>
             {

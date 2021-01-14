@@ -28,35 +28,39 @@ namespace SqlParser
      */
     public class Parser
     {
-        protected static readonly Parser<char> Plus = Terms.Char('+');
-        protected static readonly Parser<char> Minus = Terms.Char('-');
-        protected static readonly Parser<char> Times = Terms.Char('*');
-        protected static readonly Parser<char> Divided = Terms.Char('/');
-        protected static readonly Parser<char> Modulo = Terms.Char('%');
+        internal protected static readonly Parser<char> Plus = Terms.Char('+');
+        internal protected static readonly Parser<char> Minus = Terms.Char('-');
+        internal protected static readonly Parser<char> Times = Terms.Char('*');
+        internal protected static readonly Parser<char> Divided = Terms.Char('/');
+        internal protected static readonly Parser<char> Modulo = Terms.Char('%');
 
-        protected static readonly Parser<char> OpenParen = Terms.Char('(');
-        protected static readonly Parser<char> CloseParen = Terms.Char(')');
+        internal protected static readonly Parser<char> OpenParen = Terms.Char('(');
+        internal protected static readonly Parser<char> CloseParen = Terms.Char(')');
+        internal protected static readonly Parser<char> Comma = Terms.Char(',');
 
-        protected static readonly Parser<string> True = Terms.Text("True", caseInsensitive: true);
-        protected static readonly Parser<string> False = Terms.Text("False", caseInsensitive: true);
+        internal protected static readonly Parser<string> True = Terms.Text("True", caseInsensitive: true);
+        internal protected static readonly Parser<string> False = Terms.Text("False", caseInsensitive: true);
 
-        public static readonly Deferred<Expression> Expression;
+        internal static readonly Parser<Expression> Number;
+        internal static readonly Parser<Expression> Boolean;
+        internal static readonly Parser<Expression> StringLiteral;
+        internal static readonly Parser<Expression> Identifier;
+        internal static readonly Parser<Expression> Terminal;
+
+        public static readonly Deferred<Expression> Expression = Deferred<Expression>();
 
         static Parser()
         {
-            var expression = Deferred<Expression>();
-            var number = Terms.Decimal(NumberOptions.AllowSign)
-                .Then<Expression>(e => new NumericExpression(e));
-            var boolean = True.Or(False)
-                .Then<Expression>(e => new BooleanExpression(Convert.ToBoolean(e)));
-            var stringLiteral = Terms.String(StringLiteralQuotes.SingleOrDouble)
-                .Then<Expression>(e => new LiteralExpression(e.ToString()));
-            var identifier = Terms.Identifier()
-                .Then<Expression>(e => new IdentifierExpression(e.ToString()));
-            var groupExpression = Between(OpenParen, expression, CloseParen);
-            var terminal = number.Or(boolean).Or(stringLiteral).Or(identifier).Or(groupExpression);
+            Number = Terms.Decimal(NumberOptions.AllowSign).Then<Expression>(e => new NumericExpression(e));
+            Boolean = True.Or(False).Then<Expression>(e => new BooleanExpression(Convert.ToBoolean(e)));
+            StringLiteral = Terms.String(StringLiteralQuotes.SingleOrDouble).Then<Expression>(e => new LiteralExpression(e.ToString()));
+            Identifier = Terms.Identifier().Then<Expression>(e => new IdentifierExpression(e.ToString()));
+            
+            var groupExpression = Between(OpenParen, Expression, CloseParen);
+            Terminal = Number.Or(Boolean).Or(StringLiteral).Or(Identifier).Or(groupExpression);
+
             var unary = Recursive<Expression>(e => Minus.And(e)
-                .Then<Expression>(e => new NegateExpression(e.Item2)).Or(terminal));
+                .Then<Expression>(e => new NegateExpression(e.Item2)).Or(Terminal));
             var factor = unary.And(ZeroOrMany(Times.Or(Divided).Or(Modulo).And(unary)))
                 .Then(e =>
                 {
@@ -75,7 +79,7 @@ namespace SqlParser
                     return result;
                 });
 
-            expression.Parser = factor.And(ZeroOrMany(Plus.Or(Minus).And(factor)))
+            Expression.Parser = factor.And(ZeroOrMany(Plus.Or(Minus).And(factor)))
                 .Then(e =>
                 {
                     var result = e.Item1;
@@ -91,8 +95,6 @@ namespace SqlParser
 
                     return result;
                 });
-
-            Expression = expression;
         }
     }
 }

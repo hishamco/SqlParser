@@ -21,10 +21,6 @@ namespace SqlParser.Statements
     public class UpdateStatement : Statement
     {
         protected static readonly Parser<char> Equal = Terms.Char('=');
-        protected static readonly Parser<char> Comma = Terms.Char(',');
-
-        protected static readonly Parser<string> True = Terms.Text("True", caseInsensitive: true);
-        protected static readonly Parser<string> False = Terms.Text("False", caseInsensitive: true);
 
         protected static readonly Parser<string> Update = Terms.Text("UPDATE", caseInsensitive: true);
         protected static readonly Parser<string> Set = Terms.Text("SET", caseInsensitive: true);
@@ -41,14 +37,14 @@ namespace SqlParser.Statements
         {
             var number = Terms.Decimal(NumberOptions.AllowSign)
                 .Then<Expression>(e => new NumericExpression(e));
-            var boolean = True.Or(False)
+            var boolean = Parser.True.Or(Parser.False)
                 .Then<Expression>(e => new BooleanExpression(Convert.ToBoolean(e)));
             var stringLiteral = Terms.String(StringLiteralQuotes.SingleOrDouble)
                 .Then<Expression>(e => new LiteralExpression(e.ToString()));
             var identifier = Terms.Identifier()
                 .Then<Expression>(e => new IdentifierExpression(e.ToString()));
             var terminal = number.Or(boolean).Or(stringLiteral).Or(identifier);
-            var columnsAssignment = Separated(Comma, identifier.And(Equal).And(terminal));
+            var columnsAssignment = Separated(Parser.Comma, identifier.And(Equal).And(terminal));
             var upateStatement = Update.And(identifier).And(Set).And(columnsAssignment);
             _tokens.Parser = upateStatement.Then<IEnumerable<Token>>(e =>
             {
