@@ -47,7 +47,7 @@ namespace SqlParser.Statements
 
         public async override Task TokenizeAsync()
         {
-            var context = new SqlParseContext(CommandText);
+            var context = new SqlContext(CommandText);
             var result = new ParseResult<IEnumerable<Token>>();
 
             _tokens.Parse(context, ref result);

@@ -1,6 +1,7 @@
 ﻿using Parlot;
 using SqlParser.Expressions;
 using SqlParser.Values;
+using System.Linq;
 using System.Threading.Tasks;
 using Xunit;
 
@@ -14,11 +15,12 @@ namespace SqlParser.Tests
         public async Task ParseNumberExpression(string text, decimal expected)
         {
             // Arrange
-            var context = new SqlParseContext(text);
+            var parser = new Parser();
+            var context = new SqlContext(text);
             var result = new ParseResult<Expression>();
 
             // Arrange
-            Parser.Expression.Parse(context, ref result);
+            parser.Expression.Parse(context, ref result);
 
             var value = await (result.Value as NumericExpression).EvaluateAsync();
 
@@ -34,11 +36,12 @@ namespace SqlParser.Tests
         public async Task ParseBooleanExpression(string text, bool expected)
         {
             // Arrange
-            var context = new SqlParseContext(text);
+            var parser = new Parser();
+            var context = new SqlContext(text);
             var result = new ParseResult<Expression>();
 
             // Arrange
-            Parser.Expression.Parse(context, ref result);
+            parser.Expression.Parse(context, ref result);
 
             var value = await (result.Value as BooleanExpression).EvaluateAsync();
 
@@ -52,11 +55,12 @@ namespace SqlParser.Tests
         public async Task ParseStringExpression(string text, string expected)
         {
             // Arrange
-            var context = new SqlParseContext(text);
+            var parser = new Parser();
+            var context = new SqlContext(text);
             var result = new ParseResult<Expression>();
 
             // Arrange
-            Parser.Expression.Parse(context, ref result);
+            parser.Expression.Parse(context, ref result);
 
             var value = await (result.Value as LiteralExpression).EvaluateAsync();
 
@@ -72,11 +76,12 @@ namespace SqlParser.Tests
         public async Task ParseIdentifierExpression(string text, string expected)
         {
             // Arrange
-            var context = new SqlParseContext(text);
+            var parser = new Parser();
+            var context = new SqlContext(text);
             var result = new ParseResult<Expression>();
 
             // Arrange
-            Parser.Expression.Parse(context, ref result);
+            parser.Expression.Parse(context, ref result);
 
             var value = await(result.Value as LiteralExpression).EvaluateAsync();
 
@@ -90,11 +95,12 @@ namespace SqlParser.Tests
         public async Task ParseGroupExpression(string text, decimal expected)
         {
             // Arrange
-            var context = new SqlParseContext(text);
+            var parser = new Parser();
+            var context = new SqlContext(text);
             var result = new ParseResult<Expression>();
 
             // Arrange
-            Parser.Expression.Parse(context, ref result);
+            parser.Expression.Parse(context, ref result);
 
             var value = await (result.Value as NumericExpression).EvaluateAsync();
 
@@ -114,16 +120,41 @@ namespace SqlParser.Tests
         public async Task EvaluateArithmaticExpression(string text, decimal expected)
         {
             // Arrange
-            var context = new SqlParseContext(text);
+            var parser = new Parser();
+            var context = new SqlContext(text);
             var result = new ParseResult<Expression>();
 
             // Arrange
-            Parser.Expression.Parse(context, ref result);
+            parser.Expression.Parse(context, ref result);
 
             var value = await(result.Value as BinaryExpression).EvaluateAsync();
 
             // Assert
             Assert.Equal(new NumberValue(expected), value);
+        }
+
+        [Theory]
+        [InlineData("SELECT * FROM People", 1, "SELECT * FROM People")]
+        [InlineData("SELECT FirstName, LastName FROM People", 1, "SELECT FirstName, LastName FROM People")]
+        [InlineData("SELECT FROM People", 0, null)]
+        [InlineData("INSERT INTO People (FirstName, LastName) VALUES ('Jon', 'Doe')", 1, "INSERT INTO People (FirstName, LastName) VALUES ('Jon', 'Doe')")]
+        [InlineData("INSERT INTO People VALUES ('Jon', 'Doe')", 1, "INSERT INTO People VALUES ('Jon', 'Doe')")]
+        [InlineData("INSERT INTO VALUES ('Jon', 'Doe')", 0, null)]
+        [InlineData("DELETE FROM People", 1, "DELETE FROM People")]
+        [InlineData("DELETE * FROM People", 0, null)]
+        [InlineData("UPDATE People SET FirstName='Jon', Age=32", 1, "UPDATE People SET FirstName='Jon', Age=32")]
+        [InlineData("UPDATE People SET FirstName=", 0, null)]
+        public void ParseSqlStatement(string commandText, int statementsNo, string expectedCommandText)
+        {
+            // Arrange
+            var parser = new Parser();
+
+            // Act
+            var statements = parser.Parse(commandText);
+
+            // Assert
+            Assert.True(statements.Count() == statementsNo);
+            Assert.Equal(expectedCommandText, statements.SingleOrDefault()?.CommandText);
         }
     }
 }

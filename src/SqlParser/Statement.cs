@@ -10,7 +10,7 @@ namespace SqlParser
             CommandText = commandText;
         }
 
-        protected string CommandText { get; }
+        public string CommandText { get; }
 
         public IEnumerable<Token> Tokens { get; protected set; }
 
