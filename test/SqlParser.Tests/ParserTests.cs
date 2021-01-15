@@ -143,7 +143,6 @@ namespace SqlParser.Tests
         [InlineData("DELETE FROM People", 1, "DELETE FROM People")]
         [InlineData("DELETE * FROM People", 0, null)]
         [InlineData("UPDATE People SET FirstName='Jon', Age=32", 1, "UPDATE People SET FirstName='Jon', Age=32")]
-        [InlineData("UPDATE People SET FirstName=", 0, null)]
         public void ParseSqlStatement(string commandText, int statementsNo, string expectedCommandText)
         {
             // Arrange
@@ -155,6 +154,22 @@ namespace SqlParser.Tests
             // Assert
             Assert.True(statements.Count() == statementsNo);
             Assert.Equal(expectedCommandText, statements.SingleOrDefault()?.CommandText);
+        }
+
+        [Theory]
+        [InlineData("SELECT * FROM People;SELECT * FROM Customers", 2, new[] { "SELECT * FROM People", "SELECT * FROM Customers" })]
+        [InlineData("SELECT * FROM People;SELECT * FROM Customers;SELECT * FROM Accounts", 3, new[] { "SELECT * FROM People", "SELECT * FROM Customers", "SELECT * FROM Accounts" })]
+        public void ParseMultipleSqlStatements(string commandText, int statementsNo, string[] expectedCommandText)
+        {
+            // Arrange
+            var parser = new Parser();
+
+            // Act
+            var statements = parser.Parse(commandText);
+
+            // Assert
+            Assert.True(statements.Count() == statementsNo);
+            Assert.True(expectedCommandText.SequenceEqual(statements.Select(s => s.CommandText)));
         }
     }
 }

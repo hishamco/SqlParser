@@ -105,36 +105,39 @@ namespace SqlParser
         public IEnumerable<Statement> Parse(string commandText)
         {
             var statements = new List<Statement>();
-            Statement statement = null;
-            if (commandText.StartsWith("SELECT"))
+            foreach (var command in commandText.Split(';', StringSplitOptions.RemoveEmptyEntries))
             {
-                statement = new SelectStatement(commandText);
-            }
-            else if (commandText.StartsWith("INSERT"))
-            {
-                statement = new InsertStatement(commandText);
-            }
-            else if (commandText.StartsWith("DELETE"))
-            {
-                statement = new DeleteStatement(commandText);
-            }
-            else if (commandText.StartsWith("UPDATE"))
-            {
-                statement = new UpdateStatement(commandText);
-            }
-
-            try
-            {
-                statement.TokenizeAsync();
-
-                if (statement.Tokens != null)
+                Statement statement = null;
+                if (command.StartsWith("SELECT"))
                 {
-                    statements.Add(statement);
+                    statement = new SelectStatement(command);
                 }
-            }
-            catch
-            {
+                else if (command.StartsWith("INSERT"))
+                {
+                    statement = new InsertStatement(command);
+                }
+                else if (command.StartsWith("DELETE"))
+                {
+                    statement = new DeleteStatement(command);
+                }
+                else if (command.StartsWith("UPDATE"))
+                {
+                    statement = new UpdateStatement(command);
+                }
 
+                try
+                {
+                    statement.TokenizeAsync();
+
+                    if (statement.Tokens != null)
+                    {
+                        statements.Add(statement);
+                    }
+                }
+                catch
+                {
+
+                }
             }
 
             return statements;
