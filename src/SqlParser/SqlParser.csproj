@@ -1,7 +1,23 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>netstandard2.1</TargetFramework>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <VersionPrefix>0.0.1</VersionPrefix>
+    <Authors>Hisham Bin Ateya</Authors>
+    <Company />
+    <Description>Provides lexing and parsing APIs for SQL statements.</Description>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/hishamco/SqlParser</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/hishamco/SqlParser</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <PackageTags>ASP.NET Core, SQL, Parser</PackageTags>
+    <PackageReleaseNotes>https://github.com/hishamco/SqlParser/releases</PackageReleaseNotes>
+    <PackageId>SqlParser.Core</PackageId>
+    <Product>Parser for SQL</Product>
+    <PackageRequireLicenseAcceptance>true</PackageRequireLicenseAcceptance>
+    <Copyright>2021 SqlParser</Copyright>
   </PropertyGroup>
 
   <ItemGroup>
