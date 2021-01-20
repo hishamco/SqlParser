@@ -1,5 +1,6 @@
 ﻿using Parlot;
 using SqlParser.Expressions;
+using SqlParser.Statements;
 using SqlParser.Values;
 using System.Linq;
 using System.Threading.Tasks;
@@ -134,16 +135,16 @@ namespace SqlParser.Tests
         }
 
         [Theory]
-        [InlineData("SELECT * FROM People", 1, "SELECT * FROM People")]
-        [InlineData("SELECT FirstName, LastName FROM People", 1, "SELECT FirstName, LastName FROM People")]
+        [InlineData("SELECT * FROM People", 1, "SelectStatement")]
+        [InlineData("SELECT FirstName, LastName FROM People", 1, "SelectStatement")]
         [InlineData("SELECT FROM People", 0, null)]
-        [InlineData("INSERT INTO People (FirstName, LastName) VALUES ('Jon', 'Doe')", 1, "INSERT INTO People (FirstName, LastName) VALUES ('Jon', 'Doe')")]
-        [InlineData("INSERT INTO People VALUES ('Jon', 'Doe')", 1, "INSERT INTO People VALUES ('Jon', 'Doe')")]
+        [InlineData("INSERT INTO People (FirstName, LastName) VALUES ('Jon', 'Doe')", 1, "InsertStatement")]
+        [InlineData("INSERT INTO People VALUES ('Jon', 'Doe')", 1, "InsertStatement")]
         [InlineData("INSERT INTO VALUES ('Jon', 'Doe')", 0, null)]
-        [InlineData("DELETE FROM People", 1, "DELETE FROM People")]
+        [InlineData("DELETE FROM People", 1, "DeleteStatement")]
         [InlineData("DELETE * FROM People", 0, null)]
-        [InlineData("UPDATE People SET FirstName='Jon', Age=32", 1, "UPDATE People SET FirstName='Jon', Age=32")]
-        public void ParseSqlStatement(string commandText, int statementsNo, string expectedCommandText)
+        [InlineData("UPDATE People SET FirstName='Jon', Age=32", 1, "UpdateStatement")]
+        public void ParseSqlStatement(string commandText, int statementsNo, string expectedStatmentType)
         {
             // Arrange
             var parser = new Parser();
@@ -153,13 +154,13 @@ namespace SqlParser.Tests
 
             // Assert
             Assert.True(statements.Count() == statementsNo);
-            Assert.Equal(expectedCommandText, statements.SingleOrDefault()?.CommandText);
+            Assert.Equal(expectedStatmentType, statements.SingleOrDefault()?.GetType()?.Name ?? null);
         }
 
         [Theory]
-        [InlineData("SELECT * FROM People;SELECT * FROM Customers", 2, new[] { "SELECT * FROM People", "SELECT * FROM Customers" })]
-        [InlineData("SELECT * FROM People;SELECT * FROM Customers;SELECT * FROM Accounts", 3, new[] { "SELECT * FROM People", "SELECT * FROM Customers", "SELECT * FROM Accounts" })]
-        public void ParseMultipleSqlStatements(string commandText, int statementsNo, string[] expectedCommandText)
+        [InlineData("SELECT * FROM People;SELECT * FROM Customers", 2)]
+        [InlineData("SELECT * FROM People;SELECT * FROM Customers;SELECT * FROM Accounts", 3)]
+        public void ParseMultipleSqlStatements(string commandText, int statementsNo)
         {
             // Arrange
             var parser = new Parser();
@@ -169,7 +170,7 @@ namespace SqlParser.Tests
 
             // Assert
             Assert.True(statements.Count() == statementsNo);
-            Assert.True(expectedCommandText.SequenceEqual(statements.Select(s => s.CommandText)));
+            Assert.True(statements.All(s => s.GetType().Name == nameof(SelectStatement)));
         }
     }
 }

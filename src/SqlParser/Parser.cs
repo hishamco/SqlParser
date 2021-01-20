@@ -4,6 +4,7 @@ using SqlParser.Expressions;
 using SqlParser.Statements;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using static Parlot.Fluent.Parsers;
 
 namespace SqlParser
@@ -42,30 +43,36 @@ namespace SqlParser
         internal protected static readonly Parser<char> OpenParen = Terms.Char('(');
         internal protected static readonly Parser<char> CloseParen = Terms.Char(')');
         internal protected static readonly Parser<char> Comma = Terms.Char(',');
+        internal protected static readonly Parser<char> SemiColon = Terms.Char(';');
+        internal protected static readonly Parser<char> Asterisk = Terms.Char('*');
 
         internal protected static readonly Parser<string> True = Terms.Text("True", caseInsensitive: true);
         internal protected static readonly Parser<string> False = Terms.Text("False", caseInsensitive: true);
 
-        internal static readonly Parser<decimal> Number = Terms.Decimal(NumberOptions.AllowSign);
-        internal static readonly Parser<string> Boolean = True.Or(False);
-        internal static readonly Parser<TextSpan> StringLiteral = Terms.String(StringLiteralQuotes.SingleOrDouble);
-        internal static readonly Parser<TextSpan> Identifier = Terms.Identifier();
-        internal static readonly Deferred<Expression> Terminal = Deferred<Expression>();
+        internal protected static readonly Parser<decimal> Number = Terms.Decimal(NumberOptions.AllowSign);
+        internal protected static readonly Parser<string> Boolean = True.Or(False);
+        internal protected static readonly Parser<TextSpan> StringLiteral = Terms.String(StringLiteralQuotes.SingleOrDouble);
+        internal protected static readonly Parser<TextSpan> Identifier = Terms.Identifier();
 
         public readonly Deferred<Expression> Expression = Deferred<Expression>();
+        public readonly Deferred<List<Statement>> Grammar = Deferred<List<Statement>>();
 
         public Parser()
         {
+            var number = Number
+                .Then<Expression>(e => new NumericExpression(e));
+            var boolean = Boolean.Then<Expression>(e => new BooleanExpression(Convert.ToBoolean(e)));
+            var stringLiteral = StringLiteral.Then<Expression>(e => new LiteralExpression(e.ToString()));
+            var identifier = Identifier.Then<Expression>(e => new IdentifierExpression(e.ToString()));
             var groupExpression = Between(OpenParen, Expression, CloseParen);
-
-            Terminal.Parser = Number.Then<Expression>(e => new NumericExpression(e))
-                .Or(Boolean.Then<Expression>(e => new BooleanExpression(Convert.ToBoolean(e))))
-                .Or(StringLiteral.Then<Expression>(e => new LiteralExpression(e.ToString())))
-                .Or(Identifier.Then<Expression>(e => new IdentifierExpression(e.ToString())))
+            var terminal = number
+                .Or(boolean)
+                .Or(stringLiteral)
+                .Or(identifier)
                 .Or(groupExpression);
 
             var unary = Recursive<Expression>(e => Minus.And(e)
-                .Then<Expression>(e => new NegateExpression(e.Item2)).Or(Terminal));
+                .Then<Expression>(e => new NegateExpression(e.Item2)).Or(terminal));
             var factor = unary.And(ZeroOrMany(Times.Or(Divided).Or(Modulo).And(unary)))
                 .Then(e =>
                 {
@@ -100,47 +107,20 @@ namespace SqlParser
 
                     return result;
                 });
+
+            var statement = DeleteStatement.Statement
+                .Or(SelectStatement.Statement)
+                .Or(InsertStatement.Statement)
+                .Or(UpdateStatement.Statement);
+
+            Grammar.Parser = Separated(SemiColon, statement);
         }
 
         public IEnumerable<Statement> Parse(string commandText)
         {
-            var statements = new List<Statement>();
-            foreach (var command in commandText.Split(';', StringSplitOptions.RemoveEmptyEntries))
-            {
-                Statement statement = null;
-                if (command.StartsWith("SELECT"))
-                {
-                    statement = new SelectStatement(command);
-                }
-                else if (command.StartsWith("INSERT"))
-                {
-                    statement = new InsertStatement(command);
-                }
-                else if (command.StartsWith("DELETE"))
-                {
-                    statement = new DeleteStatement(command);
-                }
-                else if (command.StartsWith("UPDATE"))
-                {
-                    statement = new UpdateStatement(command);
-                }
+            Grammar.TryParse(commandText, out List<Statement> statements);
 
-                try
-                {
-                    statement.TokenizeAsync();
-
-                    if (statement.Tokens != null)
-                    {
-                        statements.Add(statement);
-                    }
-                }
-                catch
-                {
-
-                }
-            }
-
-            return statements;
+            return statements ?? Enumerable.Empty<Statement>();
         }
     }
 }

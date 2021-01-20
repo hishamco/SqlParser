@@ -1,6 +1,6 @@
-﻿using SqlParser.Statements;
+﻿using Parlot;
+using SqlParser.Statements;
 using System.Linq;
-using System.Threading.Tasks;
 using Xunit;
 
 namespace SqlParser.Tests
@@ -10,15 +10,17 @@ namespace SqlParser.Tests
         [Theory]
         [InlineData("DELETE FROM Customers", "Customers")]
         [InlineData("delete from Customers", "Customers")]
-        public async Task ParseDeleteStatement(string text, string expected)
+        public void ParseDeleteStatement(string text, string expected)
         {
             // Arrange
-            var statement = new DeleteStatement(text);
+            var context = new SqlContext(text);
+            var result = new ParseResult<Statement>();
 
-            // Act 
-            await statement.TokenizeAsync();
+            // Act
+            DeleteStatement.Statement.Parse(context, ref result);
 
             // Assert
+            var statement = result.Value as DeleteStatement;
             Assert.Equal(3, statement.Tokens.Count());
             Assert.Equal("DELETE", statement.Tokens.ElementAt(0).Value);
             Assert.Equal("FROM", statement.Tokens.ElementAt(1).Value);

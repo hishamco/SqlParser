@@ -1,19 +1,17 @@
 ﻿using System.Collections.Generic;
-using System.Threading.Tasks;
 
 namespace SqlParser
 {
     public abstract class Statement
     {
-        protected Statement(string commandText)
+        public Statement(string tableName)
         {
-            CommandText = commandText;
+            TableName = tableName;
+            Tokens = new List<Token>();
         }
 
-        public string CommandText { get; }
+        public string TableName { get; }
 
-        public IEnumerable<Token> Tokens { get; protected set; }
-
-        public abstract Task TokenizeAsync();
+        public IList<Token> Tokens { get; }
     }
 }

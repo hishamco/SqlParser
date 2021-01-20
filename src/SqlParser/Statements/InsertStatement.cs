@@ -1,10 +1,8 @@
-﻿using Parlot;
-using Parlot.Fluent;
+﻿using Parlot.Fluent;
 using SqlParser.Expressions;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Threading.Tasks;
 using static Parlot.Fluent.Parsers;
 
 namespace SqlParser.Statements
@@ -24,27 +22,26 @@ namespace SqlParser.Statements
         protected static readonly Parser<string> Into = Terms.Text("INTO", caseInsensitive: true);
         protected static readonly Parser<string> Values = Terms.Text("VALUES", caseInsensitive: true);
 
-        private static readonly Deferred<IEnumerable<Token>> _tokens = Deferred<IEnumerable<Token>>();
-
-        public string TableName { get; private set; }
+        public static readonly Deferred<Statement> Statement = Deferred<Statement>();
 
         public IEnumerable<string> ColumnNames { get; set; }
 
         static InsertStatement()
         {
-            var number = Terms.Decimal(NumberOptions.AllowSign)
+            var number = Parser.Number
                 .Then<Expression>(e => new NumericExpression(e));
-            var boolean = Parser.True.Or(Parser.False)
+            var boolean = Parser.Boolean
                 .Then<Expression>(e => new BooleanExpression(Convert.ToBoolean(e)));
-            var stringLiteral = Terms.String(StringLiteralQuotes.SingleOrDouble)
+            var stringLiteral = Parser.StringLiteral
                 .Then<Expression>(e => new LiteralExpression(e.ToString()));
-            var identifier = Terms.Identifier()
+            var identifier = Parser.Identifier
                 .Then<Expression>(e => new IdentifierExpression(e.ToString()));
             var terminal = number.Or(boolean).Or(stringLiteral).Or(identifier);
             var columnsList = ZeroOrOne(Between(Parser.OpenParen, Separated(Parser.Comma, identifier), Parser.CloseParen));
             var valuesList = Between(Parser.OpenParen, Separated(Parser.Comma, terminal), Parser.CloseParen);
             var insertStatement = Insert.And(Into).And(identifier).And(columnsList).And(Values).And(valuesList);
-            _tokens.Parser = insertStatement.Then<IEnumerable<Token>>(e =>
+
+            Statement.Parser = insertStatement.Then<Statement>(e =>
             {
                 var tableName = (e.Item3 as IdentifierExpression).Name;
                 var columns = e.Item4 == null
@@ -72,35 +69,34 @@ namespace SqlParser.Statements
                     return value;
                 }).ToArray();
 
-                return new List<Token>
-                {
-                    new Token { Type = TokenType.Keyword, Value = e.Item1 },
-                    new Token { Type = TokenType.Keyword, Value = e.Item2 },
-                    new Token { Type = TokenType.Identifier, Value = tableName },
-                    new Token { Type = TokenType.List, Value = columns },
-                    new Token { Type = TokenType.Identifier, Value = e.Item5 },
-                    new Token { Type = TokenType.List, Value = values }
-                };
+                var statement = new InsertStatement(tableName) { ColumnNames = columns };
+
+                statement.Tokens.Add(new Token { Type = TokenType.Keyword, Value = e.Item1 });
+                statement.Tokens.Add(new Token { Type = TokenType.Keyword, Value = e.Item2 });
+                statement.Tokens.Add(new Token { Type = TokenType.Identifier, Value = tableName });
+                statement.Tokens.Add(new Token { Type = TokenType.List, Value = columns });
+                statement.Tokens.Add(new Token { Type = TokenType.Identifier, Value = e.Item5 });
+                statement.Tokens.Add(new Token { Type = TokenType.List, Value = values });
+
+                return statement;
             });
         }
 
-        public InsertStatement(string commandText) : base(commandText)
+        public InsertStatement(string tableName) : base(tableName)
         {
 
         }
 
-        public async override Task TokenizeAsync()
-        {
-            var context = new SqlContext(CommandText);
-            var result = new ParseResult<IEnumerable<Token>>();
+        //public async static Task<IEnumerable<Token>> TokenizeAsync(string command)
+        //{
+        //    var context = new SqlContext(command);
+        //    var result = new ParseResult<Statement>();
 
-            _tokens.Parse(context, ref result);
+        //    Statement.Parse(context, ref result);
 
-            Tokens = result.Value;
-            TableName = Tokens.ElementAt(2).Value.ToString();
-            ColumnNames = (IEnumerable<string>)Tokens.ElementAt(3).Value;
+        //    await Task.CompletedTask;
 
-            await Task.CompletedTask;
-        }
+        //    return result.Value?.Tokens ?? Enumerable.Empty<Token>();
+        //}
     }
 }

@@ -1,9 +1,5 @@
-﻿using Parlot;
-using Parlot.Fluent;
+﻿using Parlot.Fluent;
 using SqlParser.Expressions;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 using static Parlot.Fluent.Parsers;
 
 namespace SqlParser.Statements
@@ -15,47 +11,45 @@ namespace SqlParser.Statements
      */
     public class DeleteStatement : Statement
     {
-        protected static readonly Parser<string> Delete = Terms.Text("DELETE", caseInsensitive: true);
-        protected static readonly Parser<string> From = Terms.Text("FROM", caseInsensitive: true);
+        private static readonly Parser<string> Delete = Terms.Text("DELETE", caseInsensitive: true);
+        private static readonly Parser<string> From = Terms.Text("FROM", caseInsensitive: true);
 
-        private static readonly Deferred<IEnumerable<Token>> _tokens = Deferred<IEnumerable<Token>>();
-
-        public string TableName { get; private set; }
+        public static readonly Deferred<Statement> Statement = Deferred<Statement>();
 
         static DeleteStatement()
         {
-            var identifier = Terms.Identifier()
+            var identifier = Parser.Identifier
                 .Then<Expression>(e => new IdentifierExpression(e.ToString()));
             var deleteStatement = Delete.And(From).And(identifier);
-            _tokens.Parser = deleteStatement.Then<IEnumerable<Token>>(e =>
+
+            Statement.Parser = deleteStatement.Then<Statement>(e =>
             {
                 var tableName = (e.Item3 as IdentifierExpression).Name;
+                var statement = new DeleteStatement(tableName);
 
-                return new List<Token>
-                {
-                    new Token { Type = TokenType.Keyword, Value = e.Item1 },
-                    new Token { Type = TokenType.Keyword, Value = e.Item2 },
-                    new Token { Type = TokenType.Identifier, Value = tableName }
-                };
+                statement.Tokens.Add(new Token { Type = TokenType.Keyword, Value = e.Item1 });
+                statement.Tokens.Add(new Token { Type = TokenType.Keyword, Value = e.Item2 });
+                statement.Tokens.Add(new Token { Type = TokenType.Identifier, Value = tableName });
+
+                return statement;
             });
         }
 
-        public DeleteStatement(string commandText) : base(commandText)
+        public DeleteStatement(string tableName) : base(tableName)
         {
 
         }
 
-        public async override Task TokenizeAsync()
-        {
-            var context = new SqlContext(CommandText);
-            var result = new ParseResult<IEnumerable<Token>>();
+        //public async Task<IEnumerable<Token>> TokenizeAsync(string command)
+        //{
+        //    var context = new SqlContext(command);
+        //    var result = new ParseResult<Statement>();
 
-            _tokens.Parse(context, ref result);
+        //    Statement.Parse(context, ref result);
 
-            Tokens = result.Value;
-            TableName = Tokens.Last().Value.ToString();
+        //    await Task.CompletedTask;
 
-            await Task.CompletedTask;
-        }
+        //    return result.Value?.Tokens ?? Enumerable.Empty<Token>();
+        //}
     }
 }
