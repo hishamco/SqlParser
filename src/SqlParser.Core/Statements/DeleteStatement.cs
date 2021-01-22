@@ -39,17 +39,5 @@ namespace SqlParser.Core.Statements
         {
 
         }
-
-        //public async Task<IEnumerable<Token>> TokenizeAsync(string command)
-        //{
-        //    var context = new SqlContext(command);
-        //    var result = new ParseResult<Statement>();
-
-        //    Statement.Parse(context, ref result);
-
-        //    await Task.CompletedTask;
-
-        //    return result.Value?.Tokens ?? Enumerable.Empty<Token>();
-        //}
     }
 }
