@@ -1,5 +1,6 @@
 ﻿using Parlot.Fluent;
 using SqlParser.Core.Expressions;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using static Parlot.Fluent.Parsers;
@@ -9,9 +10,11 @@ namespace SqlParser.Core.Statements
     /*
      * selectStatement ::= SELECT columnsList FROM tableName
      *
-     * columnsList :: * | identifier (, identifier)*
+     * columnsList ::= * | column (, column)*
      * 
-     * tableName :: = identifier
+     * column ::= identifier(.identifier)?
+     * 
+     * tableName ::= identifier
      */
     public class SelectStatement : Statement
     {
@@ -26,8 +29,22 @@ namespace SqlParser.Core.Statements
         {
             var identifier = Parser.Identifier
                 .Then<Expression>(e => new IdentifierExpression(e.ToString()));
+            var column = identifier.And(ZeroOrOne(Parser.Dot.And(identifier)))
+                //.Then(e => new IdentifierExpression(e.Item1 + (e.Item2 as IdentifierExpression).Name)))
+                .Then(e =>
+                {
+                    var tableName = String.Empty;
+                    var columnName = (e.Item1 as IdentifierExpression).Name;
+                    if (e.Item2.Item2 != null)
+                    {
+                        tableName = columnName;
+                        columnName = $"{tableName}.{(e.Item2.Item2 as IdentifierExpression).Name}";
+                    }
+
+                    return new IdentifierExpression(columnName) as Expression;
+                });
             var columnsList = Parser.Asterisk.Then(e => new List<Expression> { new LiteralExpression(e.ToString()) })
-                .Or(Separated(Parser.Comma, identifier));
+                .Or(Separated(Parser.Comma, column));
             var selectStatement = Select.And(columnsList).And(From).And(identifier);
 
             Statement.Parser = selectStatement.Then<Statement>(e =>

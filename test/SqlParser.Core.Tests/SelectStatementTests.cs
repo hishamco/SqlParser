@@ -29,5 +29,22 @@ namespace SqlParser.Tests
             Assert.Equal(expectedTableName, statement.TableName);
             Assert.Equal(expectedColumnNames, statement.ColumnNames);
         }
+
+        [Theory]
+        [InlineData("Select People.FirstName From People", new string[] { "People.FirstName" })]
+        [InlineData("Select People.FirstName, People.LastName From People", new string[] { "People.FirstName", "People.LastName" })]
+        public void ParseFullQualifiedColumnNames(string text, string[] expectedColumnNames)
+        {
+            // Arrange
+            var context = new SqlContext(text);
+            var result = new ParseResult<Statement>();
+
+            // Act
+            SelectStatement.Statement.Parse(context, ref result);
+
+            // Assert
+            var statement = result.Value as SelectStatement;
+            Assert.Equal(expectedColumnNames, statement.ColumnNames.ToArray());
+        }
     }
 }
