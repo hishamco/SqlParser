@@ -9,10 +9,12 @@ namespace SqlParser.Tests
     public class SelectStatementTests
     {
         [Theory]
-        [InlineData("Select * From People", "People", new string[] { "*" })]
-        [InlineData("Select FirstName From People", "People", new string[] { "FirstName" })]
-        [InlineData("Select FirstName, LastName From People", "People", new string[] { "FirstName", "LastName" })]
-        public void ParseSelectStatement(string text, string expectedTableName, string[] expectedColumnNames)
+        [InlineData("Select * From People", new[] { "People" }, new[] { "*" })]
+        [InlineData("Select FirstName From People", new[] { "People" }, new[] { "FirstName" })]
+        [InlineData("Select FirstName, LastName From People", new[] { "People" }, new[] { "FirstName", "LastName" })]
+        [InlineData("select * from People, Contacts", new[] { "People", "Contacts" }, new[] { "*" })]
+        [InlineData("select People.FirstName, Contatcs.Address from People, Contacts", new[] { "People", "Contacts" }, new[] { "People.FirstName", "Contatcs.Address" })]
+        public void ParseSelectStatement(string text, string[] expectedTableNames, string[] expectedColumnNames)
         {
             // Arrange
             var context = new SqlContext(text);
@@ -26,7 +28,7 @@ namespace SqlParser.Tests
             Assert.Equal(4, statement.Tokens.Count());
             Assert.Equal("SELECT", statement.Tokens.ElementAt(0).Value);
             Assert.Equal("FROM", statement.Tokens.ElementAt(2).Value);
-            Assert.Equal(expectedTableName, statement.TableName);
+            Assert.Equal(expectedTableNames, statement.TableNames.ToArray());
             Assert.Equal(expectedColumnNames, statement.ColumnNames);
         }
 

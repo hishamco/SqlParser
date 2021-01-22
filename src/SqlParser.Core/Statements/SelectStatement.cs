@@ -8,11 +8,13 @@ using static Parlot.Fluent.Parsers;
 namespace SqlParser.Core.Statements
 {
     /*
-     * selectStatement ::= SELECT columnsList FROM tableName
+     * selectStatement ::= SELECT columnsList FROM tableNames
      *
      * columnsList ::= * | column (, column)*
      * 
      * column ::= identifier(.identifier)?
+     * 
+     * tableNames ::= tableName | tableName (, tableName)*
      * 
      * tableName ::= identifier
      */
@@ -23,14 +25,15 @@ namespace SqlParser.Core.Statements
 
         public static readonly Deferred<Statement> Statement = Deferred<Statement>();
 
-        public IEnumerable<string> ColumnNames { get; set; }
+        public IEnumerable<string> ColumnNames { get; private set; }
+
+        public IEnumerable<string> TableNames { get; private set; }
 
         static SelectStatement()
         {
             var identifier = Parser.Identifier
                 .Then<Expression>(e => new IdentifierExpression(e.ToString()));
             var column = identifier.And(ZeroOrOne(Parser.Dot.And(identifier)))
-                //.Then(e => new IdentifierExpression(e.Item1 + (e.Item2 as IdentifierExpression).Name)))
                 .Then(e =>
                 {
                     var tableName = String.Empty;
@@ -45,16 +48,20 @@ namespace SqlParser.Core.Statements
                 });
             var columnsList = Parser.Asterisk.Then(e => new List<Expression> { new LiteralExpression(e.ToString()) })
                 .Or(Separated(Parser.Comma, column));
-            var selectStatement = Select.And(columnsList).And(From).And(identifier);
+            var tablesList = Separated(Parser.Comma, identifier);
+            var selectStatement = Select.And(columnsList).And(From).And(tablesList);
 
             Statement.Parser = selectStatement.Then<Statement>(e =>
             {
-                var tableName = (e.Item4 as IdentifierExpression).Name;
-                var statement = new SelectStatement(tableName);
+                var tableNames = e.Item4.Select(t => (t as IdentifierExpression).Name);
+                var statement = new SelectStatement(tableNames.ElementAt(0))
+                {
+                    TableNames = tableNames
+                };
 
                 statement.Tokens.Add(new Token { Type = TokenType.Keyword, Value = e.Item1 });
                 statement.Tokens.Add(new Token { Type = TokenType.Keyword, Value = e.Item3 });
-                statement.Tokens.Add(new Token { Type = TokenType.Identifier, Value = tableName });
+                statement.Tokens.Add(new Token { Type = TokenType.List, Value = tableNames });
 
                 if (e.Item2.Count == 1)
                 {
