@@ -48,5 +48,26 @@ namespace SqlParser.Tests
             var statement = result.Value as SelectStatement;
             Assert.Equal(expectedColumnNames, statement.ColumnNames.ToArray());
         }
+
+        [Theory]
+        [InlineData("Select FirstName As Name From People", new string[] { "Name" }, new string[] { "People" })]
+        [InlineData("Select People.FirstName As Name From People", new string[] { "Name" }, new string[] { "People" })]
+        [InlineData("Select FirstName As 'First Name', LastName As 'Sure Name' From People", new string[] { "First Name", "Sure Name" }, new string[] { "People" })]
+        [InlineData("Select * From People As Persons", new string[] { "*" }, new string[] { "Persons" })]
+        [InlineData("Select FirstName As 'First Name', LastName As 'Sure Name' From People As Persons", new string[] { "First Name", "Sure Name" }, new string[] { "Persons" })]
+        public void ParseColumnAndTableAliases(string text, string[] expectedColumnAliases, string[] expectedTableAliases)
+        { 
+            // Arrange
+            var context = new SqlContext(text);
+            var result = new ParseResult<Statement>();
+
+            // Act
+            SelectStatement.Statement.Parse(context, ref result);
+
+            // Assert
+            var statement = result.Value as SelectStatement;
+            Assert.Equal(expectedColumnAliases, statement.ColumnNames.ToArray());
+            Assert.Equal(expectedTableAliases, statement.TableNames.ToArray());
+        }
     }
 }
