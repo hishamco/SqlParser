@@ -122,12 +122,6 @@ namespace SqlParser.Core.Statements
                 statement.Nodes.Add(updateClause);
                 statement.Nodes.Add(setClause);
 
-                statement.Tokens.Add(new Token { Type = TokenType.Keyword, Value = e.Item1 });
-                statement.Tokens.Add(new Token { Type = TokenType.Identifier, Value = tableName });
-                statement.Tokens.Add(new Token { Type = TokenType.Keyword, Value = e.Item3 });
-                statement.Tokens.Add(new Token { Type = TokenType.List, Value = columns });
-                statement.Tokens.Add(new Token { Type = TokenType.List, Value = values });
-
                 return statement;
             });
         }
