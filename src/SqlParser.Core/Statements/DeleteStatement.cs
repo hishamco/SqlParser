@@ -1,5 +1,5 @@
 ﻿using Parlot.Fluent;
-using SqlParser.Core.Expressions;
+using SqlParser.Core.Syntax;
 using static Parlot.Fluent.Parsers;
 
 namespace SqlParser.Core.Statements
@@ -7,7 +7,7 @@ namespace SqlParser.Core.Statements
     /*
      * deleteStatement ::= DELETE FROM tableName
      * 
-     * tableName :: = identifier
+     * tableName ::= identifier
      */
     public class DeleteStatement : Statement
     {
@@ -19,17 +19,38 @@ namespace SqlParser.Core.Statements
         static DeleteStatement()
         {
             var identifier = Parser.Identifier
-                .Then<Expression>(e => new IdentifierExpression(e.ToString()));
-            var deleteStatement = Delete.And(From).And(identifier);
+                .Then(e => new SyntaxNode(new SyntaxToken
+                {
+                    Kind = SyntaxKind.IdentifierToken,
+                    Value = e.ToString()
+                }));
+            var deleteStatement = Delete
+                .Then(e => new SyntaxNode(new SyntaxToken
+                {
+                    Kind = SyntaxKind.DeleteKeyword,
+                    Value = e
+                }))
+                .And(From
+                        .Then(e => new SyntaxNode(new SyntaxToken
+                        {
+                            Kind = SyntaxKind.FromKeyword,
+                            Value = e
+                        })))
+                .And(identifier);
 
             Statement.Parser = deleteStatement.Then<Statement>(e =>
             {
-                var tableName = (e.Item3 as IdentifierExpression).Name;
+                var tableName = e.Item3.Token.Value.ToString();
                 var statement = new DeleteStatement(tableName);
+                var deleteClause = new SyntaxNode(new SyntaxToken { Kind = SyntaxKind.DeleteClause });
+                var fromClause = new SyntaxNode(new SyntaxToken { Kind = SyntaxKind.FromClause });
 
-                statement.Tokens.Add(new Token { Type = TokenType.Keyword, Value = e.Item1 });
-                statement.Tokens.Add(new Token { Type = TokenType.Keyword, Value = e.Item2 });
-                statement.Tokens.Add(new Token { Type = TokenType.Identifier, Value = tableName });
+                deleteClause.ChildNodes.Add(e.Item1);
+                fromClause.ChildNodes.Add(e.Item2);
+                fromClause.ChildNodes.Add(e.Item3);
+
+                statement.Nodes.Add(deleteClause);
+                statement.Nodes.Add(fromClause);
 
                 return statement;
             });

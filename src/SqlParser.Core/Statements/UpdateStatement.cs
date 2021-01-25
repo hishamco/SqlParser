@@ -1,8 +1,7 @@
 ﻿using Parlot.Fluent;
-using SqlParser.Core.Expressions;
+using SqlParser.Core.Syntax;
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using static Parlot.Fluent.Parsers;
 
 namespace SqlParser.Core.Statements
@@ -25,51 +24,103 @@ namespace SqlParser.Core.Statements
 
         public static readonly Deferred<Statement> Statement = Deferred<Statement>();
 
-        public IEnumerable<string> ColumnNames { get; set; }
-
-        public IEnumerable<object> Values { get; set; }
-
         static UpdateStatement()
         {
-            var number = Terms.Decimal(NumberOptions.AllowSign)
-                .Then<Expression>(e => new NumericExpression(e));
-            var boolean = Parser.True.Or(Parser.False)
-                .Then<Expression>(e => new BooleanExpression(Convert.ToBoolean(e)));
-            var stringLiteral = Terms.String(StringLiteralQuotes.SingleOrDouble)
-                .Then<Expression>(e => new LiteralExpression(e.ToString()));
+            var number = Parser.Number
+                .Then(e => new SyntaxNode(new SyntaxToken
+                {
+                    Kind = SyntaxKind.NumberToken,
+                    Value = e
+                }));
+            var boolean = Parser.Boolean
+                .Then(e => new SyntaxNode(new SyntaxToken
+                {
+                    Kind = SyntaxKind.IdentifierToken,
+                    Value = Convert.ToBoolean(e)
+                }));
+            var stringLiteral = Parser.StringLiteral
+                .Then(e => new SyntaxNode(new SyntaxToken
+                {
+                    Kind = SyntaxKind.StringToken,
+                    Value = e.ToString()
+                }));
             var identifier = Parser.Identifier
-                .Then<Expression>(e => new IdentifierExpression(e.ToString()));
+                .Then(e => new SyntaxNode(new SyntaxToken
+                {
+                    Kind = SyntaxKind.IdentifierToken,
+                    Value = e.ToString()
+                }));
             var terminal = number.Or(boolean).Or(stringLiteral).Or(identifier);
-            var columnsAssignment = Separated(Parser.Comma, identifier.And(Equal).And(terminal));
-            var upateStatement = Update.And(identifier).And(Set).And(columnsAssignment);
+            var columns = new List<string>();
+            var values = new List<object>();
+            var columnsAssignment = Separated(Parser.Comma, identifier
+                .And(Equal
+                    .Then(e => new SyntaxNode(new SyntaxToken
+                    {
+                        Kind = SyntaxKind.EqualsToken,
+                        Value = e
+                    })))
+                .And(terminal))
+                .Then(e =>
+                {
+                    columns.Clear();
+                    values.Clear();
+
+                    var nodes = new List<SyntaxNode>();
+                    for (int i = 0; i < e.Count; i++)
+                    {
+                        nodes.Add(e[i].Item1);
+                        nodes.Add(e[i].Item2);
+                        nodes.Add(e[i].Item3);
+
+                        columns.Add(e[i].Item1.Token.Value.ToString());
+                        values.Add(e[i].Item3.Token.Value);
+
+                        if (i < e.Count - 1)
+                        {
+                            nodes.Add(new SyntaxNode(new SyntaxToken
+                            {
+                                Kind = SyntaxKind.CommaToken,
+                                Value = e
+                            }));
+                        }
+                    }
+
+                    return nodes;
+                });
+            var upateStatement = Update
+                .Then(e => new SyntaxNode(new SyntaxToken
+                {
+                    Kind = SyntaxKind.UpdateKeyword,
+                    Value = e
+                }))
+                .And(identifier)
+                .And(Set
+                    .Then(e => new SyntaxNode(new SyntaxToken
+                    {
+                        Kind = SyntaxKind.SetKeyword,
+                        Value = e
+                    })))
+                .And(columnsAssignment);
 
             Statement.Parser = upateStatement.Then<Statement>(e =>
             {
-                var tableName = (e.Item2 as IdentifierExpression).Name;
-                var columns = e.Item4.Select(a => (a.Item1 as IdentifierExpression).Name);
-                var values = e.Item4.Select(a => {
-                    object value = null;
-                    if (a.Item3 is IdentifierExpression)
-                    {
-                        value = (a.Item3 as IdentifierExpression).Name;
-                    }
-                    else if (a.Item3 is BooleanExpression)
-                    {
-                        value = (a.Item3 as BooleanExpression).EvaluateAsync().GetAwaiter().GetResult().ToBooleanValue();
-                    }
-                    else if (a.Item3 is NumericExpression)
-                    {
-                        value = (a.Item3 as NumericExpression).EvaluateAsync().GetAwaiter().GetResult().ToNumberValue();
-                    }
-                    else if (a.Item3 is LiteralExpression)
-                    {
-                        value = (a.Item3 as LiteralExpression).EvaluateAsync().GetAwaiter().GetResult().ToStringValue();
-                    }
-
-                    return value;
-                }).ToArray();
-
+                var tableName = e.Item2.Token.Value.ToString();
                 var statement = new UpdateStatement(tableName) { ColumnNames = columns, Values = values };
+                var updateClause = new SyntaxNode(new SyntaxToken { Kind = SyntaxKind.UpdateClause });
+                var setClause = new SyntaxNode(new SyntaxToken { Kind = SyntaxKind.SetClause });
+
+                updateClause.ChildNodes.Add(e.Item1);
+                updateClause.ChildNodes.Add(e.Item2);
+                setClause.ChildNodes.Add(e.Item3);
+
+                foreach (var node in e.Item4)
+                {
+                    setClause.ChildNodes.Add(node);
+                }
+
+                statement.Nodes.Add(updateClause);
+                statement.Nodes.Add(setClause);
 
                 statement.Tokens.Add(new Token { Type = TokenType.Keyword, Value = e.Item1 });
                 statement.Tokens.Add(new Token { Type = TokenType.Identifier, Value = tableName });
@@ -81,10 +132,13 @@ namespace SqlParser.Core.Statements
             });
         }
 
-
         public UpdateStatement(string tableName) : base(tableName)
         {
 
         }
+
+        public IEnumerable<string> ColumnNames { get; set; }
+
+        public IEnumerable<object> Values { get; set; }
     }
 }

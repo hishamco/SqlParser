@@ -1,5 +1,5 @@
 ﻿using Parlot.Fluent;
-using SqlParser.Core.Expressions;
+using SqlParser.Core.Syntax;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -18,65 +18,164 @@ namespace SqlParser.Core.Statements
      */
     public class InsertStatement : Statement
     {
-        protected static readonly Parser<string> Insert = Terms.Text("INSERT", caseInsensitive: true);
-        protected static readonly Parser<string> Into = Terms.Text("INTO", caseInsensitive: true);
-        protected static readonly Parser<string> Values = Terms.Text("VALUES", caseInsensitive: true);
+        protected static readonly Parser<string> INSERT = Terms.Text("INSERT", caseInsensitive: true);
+        protected static readonly Parser<string> INTO = Terms.Text("INTO", caseInsensitive: true);
+        protected static readonly Parser<string> VALUES = Terms.Text("VALUES", caseInsensitive: true);
 
         public static readonly Deferred<Statement> Statement = Deferred<Statement>();
-
-        public IEnumerable<string> ColumnNames { get; set; }
 
         static InsertStatement()
         {
             var number = Parser.Number
-                .Then<Expression>(e => new NumericExpression(e));
+                .Then(e => new SyntaxNode(new SyntaxToken
+                {
+                    Kind = SyntaxKind.NumberToken,
+                    Value = e
+                }));
             var boolean = Parser.Boolean
-                .Then<Expression>(e => new BooleanExpression(Convert.ToBoolean(e)));
+                .Then(e => new SyntaxNode(new SyntaxToken
+                {
+                    Kind = SyntaxKind.IdentifierToken,
+                    Value = Convert.ToBoolean(e)
+                }));
             var stringLiteral = Parser.StringLiteral
-                .Then<Expression>(e => new LiteralExpression(e.ToString()));
+                .Then(e => new SyntaxNode(new SyntaxToken
+                {
+                    Kind = SyntaxKind.StringToken,
+                    Value = e.ToString()
+                }));
             var identifier = Parser.Identifier
-                .Then<Expression>(e => new IdentifierExpression(e.ToString()));
+                .Then(e => new SyntaxNode(new SyntaxToken
+                {
+                    Kind = SyntaxKind.IdentifierToken,
+                    Value = e.ToString()
+                }));
             var terminal = number.Or(boolean).Or(stringLiteral).Or(identifier);
-            var columnsList = ZeroOrOne(Between(Parser.OpenParen, Separated(Parser.Comma, identifier), Parser.CloseParen));
-            var valuesList = Between(Parser.OpenParen, Separated(Parser.Comma, terminal), Parser.CloseParen);
-            var insertStatement = Insert.And(Into).And(identifier).And(columnsList).And(Values).And(valuesList);
+            var columns = new List<string>();
+            var values = new List<object>();
+            var columnsList = ZeroOrOne(Between(Parser.OpenParen, Separated(Parser.Comma, identifier)
+                .Then(e =>
+                {
+                    columns.Clear();
+                    columns.AddRange(e.Select(n => n.Token.Value.ToString()));
+
+                    return e;
+                }), Parser.CloseParen)
+            .Then(e =>
+            {
+                if (e.Count > 0)
+                {
+                    for (int i = 1; i < e.Count; i += 2)
+                    {
+                        e.Insert(i, new SyntaxNode(new SyntaxToken
+                        {
+                            Kind = SyntaxKind.CommaToken,
+                            Value = e
+                        }));
+                    }
+
+                    e.Insert(0, new SyntaxNode(new SyntaxToken
+                    {
+                        Kind = SyntaxKind.OpenParenthesisToken,
+                        Value = Parser.OpenParen.Then(e => e)
+                    }));
+
+                    e.Add(new SyntaxNode(new SyntaxToken
+                    {
+                        Kind = SyntaxKind.CloseParenthesisToken,
+                        Value = Parser.CloseParen.Then(e => e)
+                    }));
+                }
+
+                return e;
+            }));
+            var valuesList = Between(Parser.OpenParen, Separated(Parser.Comma, terminal)
+                .Then(e =>
+                {
+                    values.Clear();
+                    values.AddRange(e.Select(n => n.Token.Value));
+
+                    return e;
+                }), Parser.CloseParen)
+                .Then(e =>
+                {
+                    for (int i = 1; i < e.Count; i += 2)
+                    {
+                        e.Insert(i, new SyntaxNode(new SyntaxToken
+                        {
+                            Kind = SyntaxKind.CommaToken,
+                            Value = e
+                        }));
+                    }
+
+                    e.Insert(0, new SyntaxNode(new SyntaxToken
+                    {
+                        Kind = SyntaxKind.OpenParenthesisToken,
+                        Value = Parser.OpenParen.Then(e => e)
+                    }));
+
+                    e.Add(new SyntaxNode(new SyntaxToken
+                    {
+                        Kind = SyntaxKind.CloseParenthesisToken,
+                        Value = Parser.CloseParen.Then(e => e)
+                    }));
+
+                    return e;
+                });
+            var insertStatement = INSERT
+                .Then(e => new SyntaxNode(new SyntaxToken
+                {
+                    Kind = SyntaxKind.InsertKeyword,
+                    Value = e
+                }))
+                .And(INTO
+                    .Then(e => new SyntaxNode(new SyntaxToken
+                    {
+                        Kind = SyntaxKind.IntoKeyword,
+                        Value = e
+                    })))
+                .And(identifier)
+                .And(columnsList)
+                .And(VALUES
+                    .Then(e => new SyntaxNode(new SyntaxToken
+                    {
+                        Kind = SyntaxKind.ValuesKeyword,
+                        Value = e
+                    })))
+                .And(valuesList);
 
             Statement.Parser = insertStatement.Then<Statement>(e =>
             {
-                var tableName = (e.Item3 as IdentifierExpression).Name;
-                var columns = e.Item4 == null
-                    ? Enumerable.Empty<string>()
-                    : e.Item4.Select(i => (i as IdentifierExpression).Name);
-                var values = e.Item6.Select(v => {
-                    object value = null;
-                    if (v is IdentifierExpression)
-                    {
-                        value = (v as IdentifierExpression).Name;
-                    }
-                    else if (v is BooleanExpression)
-                    {
-                        value = (v as BooleanExpression).EvaluateAsync().GetAwaiter().GetResult().ToBooleanValue();
-                    }
-                    else if (v is NumericExpression)
-                    {
-                        value = (v as NumericExpression).EvaluateAsync().GetAwaiter().GetResult().ToNumberValue();
-                    }
-                    else if (v is LiteralExpression)
-                    {
-                        value = (v as LiteralExpression).EvaluateAsync().GetAwaiter().GetResult().ToStringValue();
-                    }
+                var tableName = e.Item3.Token.Value.ToString();
+                var statement = new InsertStatement(tableName)
+                {
+                    ColumnNames = columns,
+                    Values = values
+                };
+                var insertIntoClause = new SyntaxNode(new SyntaxToken { Kind = SyntaxKind.InsertIntoClause });
+                var valuesClause = new SyntaxNode(new SyntaxToken { Kind = SyntaxKind.ValuesClause });
 
-                    return value;
-                }).ToArray();
+                insertIntoClause.ChildNodes.Add(e.Item1);
+                insertIntoClause.ChildNodes.Add(e.Item2);
+                insertIntoClause.ChildNodes.Add(e.Item3);
 
-                var statement = new InsertStatement(tableName) { ColumnNames = columns };
+                if (e.Item4 != null)
+                {
+                    foreach (var node in e.Item4)
+                    {
+                        insertIntoClause.ChildNodes.Add(node);
+                    }
+                }
 
-                statement.Tokens.Add(new Token { Type = TokenType.Keyword, Value = e.Item1 });
-                statement.Tokens.Add(new Token { Type = TokenType.Keyword, Value = e.Item2 });
-                statement.Tokens.Add(new Token { Type = TokenType.Identifier, Value = tableName });
-                statement.Tokens.Add(new Token { Type = TokenType.List, Value = columns });
-                statement.Tokens.Add(new Token { Type = TokenType.Identifier, Value = e.Item5 });
-                statement.Tokens.Add(new Token { Type = TokenType.List, Value = values });
+                valuesClause.ChildNodes.Add(e.Item5);
+
+                foreach (var node in e.Item6)
+                {
+                    valuesClause.ChildNodes.Add(node);
+                }
+
+                statement.Nodes.Add(insertIntoClause);
+                statement.Nodes.Add(valuesClause);
 
                 return statement;
             });
@@ -86,5 +185,9 @@ namespace SqlParser.Core.Statements
         {
 
         }
+
+        public IEnumerable<string> ColumnNames { get; set; }
+
+        public IEnumerable<object> Values { get; set; }
     }
 }

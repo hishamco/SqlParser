@@ -71,7 +71,6 @@ namespace SqlParser.Core
                 .Or(stringLiteral)
                 .Or(identifier)
                 .Or(groupExpression);
-
             var unary = Recursive<Expression>(e => Minus.And(e)
                 .Then<Expression>(e => new NegateExpression(e.Item2)).Or(terminal));
             var factor = unary.And(ZeroOrMany(Times.Or(Divided).Or(Modulo).And(unary)))

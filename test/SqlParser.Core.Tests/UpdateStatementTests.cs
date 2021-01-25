@@ -1,6 +1,7 @@
 ﻿using Parlot;
 using SqlParser.Core;
 using SqlParser.Core.Statements;
+using SqlParser.Core.Syntax;
 using System.Linq;
 using Xunit;
 
@@ -22,12 +23,48 @@ namespace SqlParser.Tests
 
             // Assert
             var statement = result.Value as UpdateStatement;
-            Assert.Equal(5, statement.Tokens.Count());
-            Assert.Equal("UPDATE", statement.Tokens.ElementAt(0).Value);
-            Assert.Equal("SET", statement.Tokens.ElementAt(2).Value);
             Assert.Equal(expectedTableName, statement.TableName);
             Assert.Equal(expectedColumnNames, statement.ColumnNames);
             Assert.True(expectedValues.SequenceEqual(statement.Values, new SequenceComparer()));
+        }
+
+        [Fact]
+        public void GetUpdateStatementNodesInfo()
+        {
+            // Arrange
+            var sql = "Update People Set FirstName = 'Jon', Age = 32";
+            var context = new SqlContext(sql);
+            var result = new ParseResult<Statement>();
+
+            // Act
+            UpdateStatement.Statement.Parse(context, ref result);
+
+            // Assert
+            var statement = result.Value as UpdateStatement;
+            Assert.Equal(2, statement.Nodes.Count());
+
+            var updateClause = statement.Nodes[0];
+            Assert.Equal(SyntaxKind.UpdateClause, updateClause.Token.Kind);
+            Assert.Equal(SyntaxKind.UpdateKeyword, updateClause.ChildNodes[0].Token.Kind);
+            Assert.Equal("UPDATE", updateClause.ChildNodes[0].Token.Value);
+            Assert.Equal(SyntaxKind.IdentifierToken, updateClause.ChildNodes[1].Token.Kind);
+            Assert.Equal("People", updateClause.ChildNodes[1].Token.Value);
+
+            var setClause = statement.Nodes[1];
+            Assert.Equal(SyntaxKind.SetClause, setClause.Token.Kind);
+            Assert.Equal(SyntaxKind.SetKeyword, setClause.ChildNodes[0].Token.Kind);
+            Assert.Equal("SET", setClause.ChildNodes[0].Token.Value);
+            Assert.Equal(SyntaxKind.IdentifierToken, setClause.ChildNodes[1].Token.Kind);
+            Assert.Equal("FirstName", setClause.ChildNodes[1].Token.Value);
+            Assert.Equal(SyntaxKind.EqualsToken, setClause.ChildNodes[2].Token.Kind);
+            Assert.Equal(SyntaxKind.StringToken, setClause.ChildNodes[3].Token.Kind);
+            Assert.Equal("Jon", setClause.ChildNodes[3].Token.Value);
+            Assert.Equal(SyntaxKind.CommaToken, setClause.ChildNodes[4].Token.Kind);
+            Assert.Equal(SyntaxKind.IdentifierToken, setClause.ChildNodes[5].Token.Kind);
+            Assert.Equal("Age", setClause.ChildNodes[5].Token.Value);
+            Assert.Equal(SyntaxKind.EqualsToken, setClause.ChildNodes[6].Token.Kind);
+            Assert.Equal(SyntaxKind.NumberToken, setClause.ChildNodes[7].Token.Kind);
+            Assert.Equal(32M, setClause.ChildNodes[7].Token.Value);
         }
     }
 }

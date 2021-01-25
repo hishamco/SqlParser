@@ -1,6 +1,5 @@
 ﻿using Parlot.Fluent;
-using SqlParser.Core.Expressions;
-using System;
+using SqlParser.Core.Syntax;
 using System.Collections.Generic;
 using System.Linq;
 using static Parlot.Fluent.Parsers;
@@ -22,94 +21,264 @@ namespace SqlParser.Core.Statements
      */
     public class SelectStatement : Statement
     {
+        private static readonly SyntaxNode EmptyNode = new SyntaxNode(new SyntaxToken());
+
         internal protected static readonly Parser<string> Select = Terms.Text("SELECT", caseInsensitive: true);
         internal protected static readonly Parser<string> From = Terms.Text("FROM", caseInsensitive: true);
         internal protected static readonly Parser<string> As = Terms.Text("AS", caseInsensitive: true);
 
         public static readonly Deferred<Statement> Statement = Deferred<Statement>();
 
-        public IEnumerable<string> ColumnNames { get; private set; }
-
-        public IEnumerable<string> TableNames { get; private set; }
-
         static SelectStatement()
         {
             var identifier = Parser.Identifier
-                .Then<Expression>(e => new IdentifierExpression(e.ToString()));
+                .Then(e => new SyntaxNode(new SyntaxToken
+                {
+                    Kind = SyntaxKind.IdentifierToken,
+                    Value = e.ToString()
+                }));
             var stringLiteral = Parser.StringLiteral
-                .Then<Expression>(e => new LiteralExpression(e.ToString()));
-            var alias = identifier.Or(stringLiteral)
+                .Then(e => new SyntaxNode(new SyntaxToken
+                {
+                    Kind = SyntaxKind.StringToken,
+                    Value = e.ToString()
+                }));
+            var alias = identifier.Or(stringLiteral);
+            var columns = new List<string>();
+            var tables = new List<string>();
+            var column = identifier
+                .And(ZeroOrOne(As
+                    .Then(e => new SyntaxNode(new SyntaxToken
+                    {
+                        Kind = SyntaxKind.AsKeyword,
+                        Value = e
+                    })).And(alias)))
+                .And(ZeroOrOne(
+                    Parser.Dot
+                        .Then(e => new SyntaxNode(new SyntaxToken
+                        {
+                            Kind = SyntaxKind.DotToken,
+                            Value = e
+                        }))
+                    .And(identifier
+                        .And(ZeroOrOne(As
+                                .Then(e => new SyntaxNode(new SyntaxToken
+                                {
+                                    Kind = SyntaxKind.AsKeyword,
+                                    Value = e
+                                }))
+                            .And(alias))))))
                 .Then(e =>
                 {
-                    return e.EvaluateAsync().GetAwaiter().GetResult().ToStringValue();
+                    columns.Clear();
+
+                    return e;
                 });
-            var column = identifier.And(ZeroOrOne(As.And(alias)))
-                .Then(e => e.Item2.Item2 ?? (e.Item1 as IdentifierExpression).Name)
-                .And(ZeroOrOne(Parser.Dot.And(identifier.And(ZeroOrOne(As.And(alias))))))
+            var columnsList = Parser.Asterisk
                 .Then(e =>
                 {
-                    var tableName = String.Empty;
-                    var columnName = e.Item1;
-                    if (e.Item2.Item2.Item1 != null)
+                    columns.Clear();
+
+                    return new List<(SyntaxNode, (SyntaxNode, SyntaxNode), (SyntaxNode, (SyntaxNode, (SyntaxNode, SyntaxNode))))>
                     {
-                        tableName = columnName;
-                        columnName = $"{tableName}.{(e.Item2.Item2.Item1 as IdentifierExpression).Name}";
+                        (new SyntaxNode(new SyntaxToken
+                        {
+                            Kind = SyntaxKind.AsteriskToken,
+                            Value = e
+                        }),
+                        (EmptyNode, EmptyNode),
+                        (EmptyNode, (EmptyNode, (EmptyNode, EmptyNode))))
+                    };
+                })
+                .Or(Separated(Parser.Comma, column))
+                .Then(e =>
+                {
+                    for (int i = 1; i < e.Count; i += 2)
+                    {
+                        e.Insert(i, (new SyntaxNode(new SyntaxToken
+                        {
+                            Kind = SyntaxKind.CommaToken,
+                            Value = ","
+                        }),
+                        (EmptyNode, EmptyNode),
+                        (EmptyNode, (EmptyNode, (EmptyNode, EmptyNode)))));
                     }
 
-                    if (e.Item2.Item2.Item2.Item2 != null)
+                    for (int i = 0; i < e.Count; i += 2)
                     {
-                        columnName = e.Item2.Item2.Item2.Item2;
+                        var columnName = e[i].Item1.Token.Value.ToString();
+                        if (e[i].Item2.Item2 != null && e[i].Item2.Item2 != EmptyNode)
+                        {
+                            columnName = e[i].Item2.Item2.Token.Value.ToString();
+                        }
+
+                        if (e[i].Item3.Item2.Item1 != null && e[i].Item3.Item2.Item1 != EmptyNode)
+                        {
+                            columnName = e[i].Item3.Item2.Item1.Token.Value.ToString();
+                        }
+
+                        if (e[i].Item3.Item2.Item2.Item2 != null && e[i].Item3.Item2.Item2.Item2 != EmptyNode)
+                        {
+                            columnName = e[i].Item3.Item2.Item2.Item2.Token.Value.ToString();
+                        }
+
+                        columns.Add(columnName);
                     }
 
-                    return new IdentifierExpression(columnName) as Expression;
+                    return e;
                 });
-            var columnsList = Parser.Asterisk.Then(e => new List<Expression> { new LiteralExpression(e.ToString()) })
-                .Or(Separated(Parser.Comma, column));
-            var tableName = identifier.And(ZeroOrOne(As.And(alias)))
-                .Then(e => e.Item2.Item2 ?? (e.Item1 as IdentifierExpression).Name);
-            var tablesList = Separated(Parser.Comma, tableName);
-            var selectStatement = Select.And(columnsList).And(From).And(tablesList);
+            var table = identifier.And(ZeroOrOne(As
+                .Then(e => new SyntaxNode(new SyntaxToken
+                {
+                    Kind = SyntaxKind.AsKeyword,
+                    Value = e
+                })).And(alias)))
+                .Then(e =>
+                {
+                    var nodes = new List<SyntaxNode>();
+                    var tableName = e.Item1.Token.Value.ToString();
+
+                    nodes.Add(new SyntaxNode(new SyntaxToken
+                    {
+                        Kind = SyntaxKind.IdentifierToken,
+                        Value = tableName
+                    }));
+
+                    if (e.Item2.Item2 != null)
+                    {
+                        tableName = e.Item2.Item2.Token.Value.ToString();
+
+                        nodes.Add(new SyntaxNode(new SyntaxToken
+                        {
+                            Kind = SyntaxKind.AsKeyword,
+                            Value = e.Item2.Item1.Token.Value
+                        }));
+
+                        if (e.Item2.Item2.Token.Kind == SyntaxKind.StringToken)
+                        {
+                            nodes.Add(new SyntaxNode(new SyntaxToken
+                            {
+                                Kind = SyntaxKind.StringToken,
+                                Value = tableName
+                            }));
+                        }
+                        else
+                        {
+                            nodes.Add(new SyntaxNode(new SyntaxToken
+                            {
+                                Kind = SyntaxKind.IdentifierToken,
+                                Value = tableName
+                            }));
+                        }
+                    }
+
+                    return nodes;
+                });
+            var tablesList = Separated(Parser.Comma, table)
+                .Then(e =>
+                {
+                    tables.Clear();
+
+                    foreach (var node in e)
+                    {
+                        if (node.Count == 3)
+                        {
+                            tables.Add(node[2].Token.Value.ToString());
+                        }
+                        else
+                        {
+                            tables.Add(node[0].Token.Value.ToString());
+                        }
+
+                        node.Add(new SyntaxNode(new SyntaxToken
+                        {
+                            Kind = SyntaxKind.CommaToken,
+                            Value = ","
+                        }));
+                    }
+
+                    var lastNode = e[e.Count - 1];
+                    lastNode.RemoveAt(lastNode.Count - 1);
+
+                    return e.SelectMany(n => n);
+                });
+            var selectStatement = Select
+                .Then(e => new SyntaxNode(new SyntaxToken
+                {
+                    Kind = SyntaxKind.SelectKeyword,
+                    Value = e
+                })).And(columnsList).And(From
+                        .Then(e => new SyntaxNode(new SyntaxToken
+                        {
+                            Kind = SyntaxKind.FromKeyword,
+                            Value = e
+                        })))
+                    .And(tablesList);
 
             Statement.Parser = selectStatement.Then<Statement>(e =>
             {
-                var tableNames = e.Item4;
-                var statement = new SelectStatement(tableNames.ElementAt(0))
+                var statement = new SelectStatement(tables[0])
                 {
-                    TableNames = tableNames
+                    TableNames = tables,
+                    ColumnNames = columns
                 };
+                var selectClause = new SyntaxNode(new SyntaxToken { Kind = SyntaxKind.SelectClause });
+                var fromClause = new SyntaxNode(new SyntaxToken { Kind = SyntaxKind.FromClause });
 
-                statement.Tokens.Add(new Token { Type = TokenType.Keyword, Value = e.Item1 });
-                statement.Tokens.Add(new Token { Type = TokenType.Keyword, Value = e.Item3 });
-                statement.Tokens.Add(new Token { Type = TokenType.List, Value = tableNames });
+                selectClause.ChildNodes.Add(e.Item1);
 
-                if (e.Item2.Count == 1)
+                for (int i = 0; i < e.Item2.Count; i++)
                 {
-                    if (e.Item2.First() is IdentifierExpression)
+                    if (e.Item2.Count == 1 && e.Item2[0].Item1.Token.Kind == SyntaxKind.AsteriskToken)
                     {
-                        statement.Tokens.Insert(1, new Token { Type = TokenType.Identifier, Value = (e.Item2.First() as IdentifierExpression).Name });
+                        selectClause.ChildNodes.Add(e.Item2[0].Item1);
+                        break;
                     }
                     else
                     {
-                        statement.Tokens.Insert(1, new Token { Type = TokenType.Symbol, Value = '*' });
+                        selectClause.ChildNodes.Add(e.Item2[i].Item1);
+
+                        if (e.Item2[i].Item2.Item1 != null && e.Item2[i].Item2.Item1 != EmptyNode)
+                        {
+                            selectClause.ChildNodes.Add(e.Item2[i].Item2.Item1);
+                            selectClause.ChildNodes.Add(e.Item2[i].Item2.Item2);
+                        }
+
+                        if (e.Item2[i].Item3.Item1 != null && e.Item2[i].Item3.Item1 != EmptyNode)
+                        {
+                            selectClause.ChildNodes.Add(e.Item2[i].Item3.Item1);
+                            selectClause.ChildNodes.Add(e.Item2[i].Item3.Item2.Item1);
+                        }
+
+                        if (e.Item2[i].Item3.Item2.Item2.Item1 != null && e.Item2[i].Item3.Item2.Item2.Item1 != EmptyNode)
+                        {
+                            selectClause.ChildNodes.Add(e.Item2[i].Item3.Item2.Item2.Item1);
+                            selectClause.ChildNodes.Add(e.Item2[i].Item3.Item2.Item2.Item2);
+                        }
                     }
                 }
-                else
+
+                fromClause.ChildNodes.Add(e.Item3);
+
+                foreach (var node in e.Item4)
                 {
-                    statement.Tokens.Insert(1, new Token { Type = TokenType.List, Value = e.Item2.Select(i => (i as IdentifierExpression).Name) });
+                    fromClause.ChildNodes.Add(node);
                 }
 
-                statement.ColumnNames = statement.Tokens.ElementAt(1).Value is IEnumerable<string>
-                    ? (IEnumerable<string>)statement.Tokens.ElementAt(1).Value
-                    : new List<string> { statement.Tokens.ElementAt(1).Value.ToString() };
+                statement.Nodes.Add(selectClause);
+                statement.Nodes.Add(fromClause);
 
                 return statement;
             });
         }
 
-
         public SelectStatement(string tableName) : base(tableName)
         {
 
         }
+
+        public IEnumerable<string> ColumnNames { get; private set; }
+
+        public IEnumerable<string> TableNames { get; private set; }
     }
 }
