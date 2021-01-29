@@ -51,6 +51,25 @@ namespace SqlParser.Tests
             Assert.Equal(expectedTableAliases, statement.TableAliases.ToArray());
         }
 
+        [Theory]
+        [InlineData("Select Distinct * From People", new string[] { "People" }, new string[] { "*" })]
+        [InlineData("Select Distinct FirstName, LastName From People", new string[] { "People" }, new string[] { "FirstName", "LastName" })]
+        public void ParseDistinct(string text, string[] expectedTableNames, string[] expectedColumnNames)
+        {
+            // Arrange
+            var context = new SqlContext(text);
+            var result = new ParseResult<Statement>();
+
+            // Act
+            SelectStatement.Statement.Parse(context, ref result);
+
+            // Assert
+            var statement = result.Value as SelectStatement;
+            Assert.Equal(SyntaxKind.DistinctKeyword, statement.Nodes[0].ChildNodes[1].Kind);
+            Assert.Equal(expectedTableNames, statement.TableNames.ToArray());
+            Assert.Equal(expectedColumnNames, statement.ColumnNames.ToArray());
+        }
+
         [Fact]
         public void GetSelectStatementNodesInfo()
         {

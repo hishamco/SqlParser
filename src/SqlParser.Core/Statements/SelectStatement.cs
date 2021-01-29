@@ -7,7 +7,7 @@ using static Parlot.Fluent.Parsers;
 namespace SqlParser.Core.Statements
 {
     /*
-     * selectStatement ::= SELECT columnsList FROM tableNames
+     * selectStatement ::= SELECT DISTINCT? columnsList FROM tableNames
      *
      * columnsList ::= * | columnName (, columnName)*
      * 
@@ -21,9 +21,8 @@ namespace SqlParser.Core.Statements
      */
     public class SelectStatement : Statement
     {
-        private static readonly SyntaxNode EmptyNode = new SyntaxNode(new SyntaxToken());
-
         internal protected static readonly Parser<string> Select = Terms.Text("SELECT", caseInsensitive: true);
+        internal protected static readonly Parser<string> Distinct = Terms.Text("DISTINCT", caseInsensitive: true);
         internal protected static readonly Parser<string> From = Terms.Text("FROM", caseInsensitive: true);
         internal protected static readonly Parser<string> As = Terms.Text("AS", caseInsensitive: true);
 
@@ -185,25 +184,33 @@ namespace SqlParser.Core.Statements
                 {
                     Kind = SyntaxKind.SelectKeyword,
                     Value = e
-                })).And(columnsList).And(From
-                        .Then(e => new SyntaxNode(new SyntaxToken
-                        {
-                            Kind = SyntaxKind.FromKeyword,
-                            Value = e
-                        })))
-                    .And(tablesList);
+                }))
+                .And(ZeroOrOne(Distinct
+                    .Then(e => new SyntaxNode(new SyntaxToken
+                    {
+                        Kind = SyntaxKind.DistinctKeyword,
+                        Value = e
+                    }))))
+                .And(columnsList)
+                .And(From
+                    .Then(e => new SyntaxNode(new SyntaxToken
+                    {
+                        Kind = SyntaxKind.FromKeyword,
+                        Value = e
+                    })))
+                .And(tablesList);
 
             Statement.Parser = selectStatement.Then<Statement>(e =>
             {
-                var tableNames = e.Item4
+                var tableNames = e.Item5
                     .Where(n => n.Token.Kind != SyntaxKind.CommaToken)
                     .Select(e => e.ChildNodes[0].Token.Value.ToString())
                     .ToList();
-                var tableAliases = e.Item4
+                var tableAliases = e.Item5
                     .Where(n => n.Token.Kind != SyntaxKind.CommaToken && n.ChildNodes.Any(c => c.Kind == SyntaxKind.AsKeyword))
                     .Select(e => e.ChildNodes[e.ChildNodes.Count - 1].Token.Value.ToString())
                     .ToList();
-                var columnNames = e.Item2
+                var columnNames = e.Item3
                     .Where(n => n.Token.Kind != SyntaxKind.CommaToken)
                     .Select(e => e.ChildNodes[0].Token.Kind == SyntaxKind.AsteriskToken
                         ? e.ChildNodes[0].Token.Value.ToString()
@@ -211,7 +218,7 @@ namespace SqlParser.Core.Statements
                             ? e.ChildNodes[2].Token.Value.ToString()
                             : e.ChildNodes[0].Token.Value.ToString())
                     .ToList();
-                var columnAliases = e.Item2
+                var columnAliases = e.Item3
                     .Where(n => n.Token.Kind != SyntaxKind.CommaToken && n.ChildNodes.Any(c => c.Kind == SyntaxKind.AsKeyword))
                     .Select(e => e.ChildNodes[e.ChildNodes.Count - 1].Token.Value.ToString())
                     .ToList();
@@ -227,14 +234,19 @@ namespace SqlParser.Core.Statements
 
                 selectClause.ChildNodes.Add(e.Item1);
 
-                foreach (var node in e.Item2)
+                if (e.Item2 != null)
+                {
+                    selectClause.ChildNodes.Add(e.Item2);
+                }
+
+                foreach (var node in e.Item3)
                 {
                     selectClause.ChildNodes.Add(node);
                 }
 
-                fromClause.ChildNodes.Add(e.Item3);
+                fromClause.ChildNodes.Add(e.Item4);
 
-                foreach (var node in e.Item4)
+                foreach (var node in e.Item5)
                 {
                     fromClause.ChildNodes.Add(node);
                 }
