@@ -30,6 +30,7 @@
         AsKeyword,
         UpdateKeyword,
         SetKeyword,
+        DistinctKeyword,
 
         // Clauses
         DeleteClause,
