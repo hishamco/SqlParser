@@ -7,7 +7,9 @@ using static Parlot.Fluent.Parsers;
 namespace SqlParser.Core.Statements
 {
     /*
-     * selectStatement ::= SELECT DISTINCT? columnsList FROM tableNames
+     * selectStatement ::= SELECT DISTINCT? topExpression? columnsList FROM tableNames
+     * 
+     * topExpression ::= TOP(number)
      *
      * columnsList ::= * | columnName (, columnName)*
      * 
@@ -23,6 +25,7 @@ namespace SqlParser.Core.Statements
     {
         internal protected static readonly Parser<string> Select = Terms.Text("SELECT", caseInsensitive: true);
         internal protected static readonly Parser<string> Distinct = Terms.Text("DISTINCT", caseInsensitive: true);
+        internal protected static readonly Parser<string> Top = Terms.Text("TOP", caseInsensitive: true);
         internal protected static readonly Parser<string> From = Terms.Text("FROM", caseInsensitive: true);
         internal protected static readonly Parser<string> As = Terms.Text("AS", caseInsensitive: true);
 
@@ -30,6 +33,12 @@ namespace SqlParser.Core.Statements
 
         static SelectStatement()
         {
+            var number = Parser.Number
+               .Then(e => new SyntaxNode(new SyntaxToken
+               {
+                   Kind = SyntaxKind.NumberToken,
+                   Value = e
+               }));
             var identifier = Parser.Identifier
                 .Then(e => new SyntaxNode(new SyntaxToken
                 {
@@ -179,6 +188,28 @@ namespace SqlParser.Core.Statements
 
                     return e;
                 });
+            var topExpression = ZeroOrOne(Top
+                .Then(e => new SyntaxNode(new SyntaxToken
+                {
+                    Kind = SyntaxKind.TopKeyword,
+                    Value = e
+                }))
+                .And(Between(Parser.OpenParen, number, Parser.CloseParen)))
+                .Then(e => new List<SyntaxNode>
+                    {
+                        e.Item1,
+                        new SyntaxNode(new SyntaxToken
+                        {
+                            Kind = SyntaxKind.OpenParenthesisToken,
+                            Value = '('
+                        }),
+                        e.Item2,
+                        new SyntaxNode(new SyntaxToken
+                        {
+                            Kind = SyntaxKind.CloseParenthesisToken,
+                            Value = ')'
+                        })
+                    });
             var selectStatement = Select
                 .Then(e => new SyntaxNode(new SyntaxToken
                 {
@@ -191,6 +222,7 @@ namespace SqlParser.Core.Statements
                         Kind = SyntaxKind.DistinctKeyword,
                         Value = e
                     }))))
+                .And(topExpression)
                 .And(columnsList)
                 .And(From
                     .Then(e => new SyntaxNode(new SyntaxToken
@@ -202,15 +234,15 @@ namespace SqlParser.Core.Statements
 
             Statement.Parser = selectStatement.Then<Statement>(e =>
             {
-                var tableNames = e.Item5
+                var tableNames = e.Item6
                     .Where(n => n.Token.Kind != SyntaxKind.CommaToken)
                     .Select(e => e.ChildNodes[0].Token.Value.ToString())
                     .ToList();
-                var tableAliases = e.Item5
+                var tableAliases = e.Item6
                     .Where(n => n.Token.Kind != SyntaxKind.CommaToken && n.ChildNodes.Any(c => c.Kind == SyntaxKind.AsKeyword))
                     .Select(e => e.ChildNodes[e.ChildNodes.Count - 1].Token.Value.ToString())
                     .ToList();
-                var columnNames = e.Item3
+                var columnNames = e.Item4
                     .Where(n => n.Token.Kind != SyntaxKind.CommaToken)
                     .Select(e => e.ChildNodes[0].Token.Kind == SyntaxKind.AsteriskToken
                         ? e.ChildNodes[0].Token.Value.ToString()
@@ -218,7 +250,7 @@ namespace SqlParser.Core.Statements
                             ? e.ChildNodes[2].Token.Value.ToString()
                             : e.ChildNodes[0].Token.Value.ToString())
                     .ToList();
-                var columnAliases = e.Item3
+                var columnAliases = e.Item4
                     .Where(n => n.Token.Kind != SyntaxKind.CommaToken && n.ChildNodes.Any(c => c.Kind == SyntaxKind.AsKeyword))
                     .Select(e => e.ChildNodes[e.ChildNodes.Count - 1].Token.Value.ToString())
                     .ToList();
@@ -239,14 +271,22 @@ namespace SqlParser.Core.Statements
                     selectClause.ChildNodes.Add(e.Item2);
                 }
 
-                foreach (var node in e.Item3)
+                if (e.Item3[0] != null)
+                {
+                    foreach (var node in e.Item3)
+                    {
+                        selectClause.ChildNodes.Add(node);
+                    }
+                }
+
+                foreach (var node in e.Item4)
                 {
                     selectClause.ChildNodes.Add(node);
                 }
 
-                fromClause.ChildNodes.Add(e.Item4);
+                fromClause.ChildNodes.Add(e.Item5);
 
-                foreach (var node in e.Item5)
+                foreach (var node in e.Item6)
                 {
                     fromClause.ChildNodes.Add(node);
                 }

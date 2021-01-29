@@ -31,6 +31,7 @@
         UpdateKeyword,
         SetKeyword,
         DistinctKeyword,
+        TopKeyword,
 
         // Clauses
         DeleteClause,

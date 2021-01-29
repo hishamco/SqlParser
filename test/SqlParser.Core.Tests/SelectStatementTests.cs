@@ -70,6 +70,26 @@ namespace SqlParser.Tests
             Assert.Equal(expectedColumnNames, statement.ColumnNames.ToArray());
         }
 
+        [Theory]
+        [InlineData("Select Top(3) * From People", new string[] { "People" }, new string[] { "*" }, 3)]
+        [InlineData("Select Top(5) FirstName, LastName From People", new string[] { "People" }, new string[] { "FirstName", "LastName" }, 5)]
+        public void ParseTop(string text, string[] expectedTableNames, string[] expectedColumnNames, decimal topCount)
+        {
+            // Arrange
+            var context = new SqlContext(text);
+            var result = new ParseResult<Statement>();
+
+            // Act
+            SelectStatement.Statement.Parse(context, ref result);
+
+            // Assert
+            var statement = result.Value as SelectStatement;
+            Assert.Equal(SyntaxKind.TopKeyword, statement.Nodes[0].ChildNodes[1].Kind);
+            Assert.Equal(topCount, statement.Nodes[0].ChildNodes[3].Token.Value);
+            Assert.Equal(expectedTableNames, statement.TableNames.ToArray());
+            Assert.Equal(expectedColumnNames, statement.ColumnNames.ToArray());
+        }
+
         [Fact]
         public void GetSelectStatementNodesInfo()
         {
