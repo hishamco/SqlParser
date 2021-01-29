@@ -44,51 +44,66 @@ namespace SqlParser.Core.Statements
                     Value = e.ToString()
                 }));
             var alias = identifier.Or(stringLiteral);
-            var columns = new List<string>();
-            var tables = new List<string>();
+            SyntaxNode columnNode = null;
             var column = identifier
-                .And(ZeroOrOne(As
-                    .Then(e => new SyntaxNode(new SyntaxToken
+                .And(ZeroOrOne(As.And(alias))).Then(e =>
                     {
-                        Kind = SyntaxKind.AsKeyword,
-                        Value = e
-                    })).And(alias)))
+                        columnNode = new SyntaxNode(new SyntaxToken());
+
+                        columnNode.ChildNodes.Add(e.Item1);
+
+                        if (e.Item2.Item1 != null)
+                        {
+                            columnNode.ChildNodes.Add(new SyntaxNode(new SyntaxToken
+                            {
+                                Kind = SyntaxKind.AsKeyword,
+                                Value = e.Item2.Item1
+                            }));
+                            columnNode.ChildNodes.Add(e.Item2.Item2);
+                        }
+
+                        return columnNode;
+                    })
                 .And(ZeroOrOne(
                     Parser.Dot
-                        .Then(e => new SyntaxNode(new SyntaxToken
-                        {
-                            Kind = SyntaxKind.DotToken,
-                            Value = e
-                        }))
                     .And(identifier
-                        .And(ZeroOrOne(As
-                                .Then(e => new SyntaxNode(new SyntaxToken
-                                {
-                                    Kind = SyntaxKind.AsKeyword,
-                                    Value = e
-                                }))
-                            .And(alias))))))
+                        .And(ZeroOrOne(
+                            As.And(alias)))))
                 .Then(e =>
                 {
-                    columns.Clear();
+                    if (e.Item2.Item1 != null)
+                    {
+                        columnNode.ChildNodes.Add(new SyntaxNode(new SyntaxToken
+                        {
+                            Kind = SyntaxKind.DotToken,
+                            Value = e.Item1
+                        }));
+                        columnNode.ChildNodes.Add(e.Item2.Item1);
+                    }
 
-                    return e;
-                });
+                    if (e.Item2.Item2.Item1 != null)
+                    {
+                        columnNode.ChildNodes.Add(new SyntaxNode(new SyntaxToken
+                        {
+                            Kind = SyntaxKind.AsKeyword,
+                            Value = e.Item2.Item2.Item1
+                        }));
+                        columnNode.ChildNodes.Add(e.Item2.Item2.Item2);
+                    }
+
+                    return columnNode;
+                })).Then(e => columnNode);
             var columnsList = Parser.Asterisk
                 .Then(e =>
                 {
-                    columns.Clear();
-
-                    return new List<(SyntaxNode, (SyntaxNode, SyntaxNode), (SyntaxNode, (SyntaxNode, (SyntaxNode, SyntaxNode))))>
+                    columnNode = new SyntaxNode(new SyntaxToken());
+                    columnNode.ChildNodes.Add(new SyntaxNode(new SyntaxToken
                     {
-                        (new SyntaxNode(new SyntaxToken
-                        {
-                            Kind = SyntaxKind.AsteriskToken,
-                            Value = e
-                        }),
-                        (EmptyNode, EmptyNode),
-                        (EmptyNode, (EmptyNode, (EmptyNode, EmptyNode))))
-                    };
+                        Kind = SyntaxKind.AsteriskToken,
+                        Value = e
+                    }));
+
+                    return new List<SyntaxNode> { columnNode };
                 })
                 .Or(Separated(Parser.Comma, column))
                 .Then(e =>
@@ -99,30 +114,7 @@ namespace SqlParser.Core.Statements
                         {
                             Kind = SyntaxKind.CommaToken,
                             Value = ","
-                        }),
-                        (EmptyNode, EmptyNode),
-                        (EmptyNode, (EmptyNode, (EmptyNode, EmptyNode)))));
-                    }
-
-                    for (int i = 0; i < e.Count; i += 2)
-                    {
-                        var columnName = e[i].Item1.Token.Value.ToString();
-                        if (e[i].Item2.Item2 != null && e[i].Item2.Item2 != EmptyNode)
-                        {
-                            columnName = e[i].Item2.Item2.Token.Value.ToString();
-                        }
-
-                        if (e[i].Item3.Item2.Item1 != null && e[i].Item3.Item2.Item1 != EmptyNode)
-                        {
-                            columnName = e[i].Item3.Item2.Item1.Token.Value.ToString();
-                        }
-
-                        if (e[i].Item3.Item2.Item2.Item2 != null && e[i].Item3.Item2.Item2.Item2 != EmptyNode)
-                        {
-                            columnName = e[i].Item3.Item2.Item2.Item2.Token.Value.ToString();
-                        }
-
-                        columns.Add(columnName);
+                        })));
                     }
 
                     return e;
@@ -135,10 +127,10 @@ namespace SqlParser.Core.Statements
                 })).And(alias)))
                 .Then(e =>
                 {
-                    var nodes = new List<SyntaxNode>();
+                    var tableNode = new SyntaxNode(new SyntaxToken());
                     var tableName = e.Item1.Token.Value.ToString();
 
-                    nodes.Add(new SyntaxNode(new SyntaxToken
+                    tableNode.ChildNodes.Add(new SyntaxNode(new SyntaxToken
                     {
                         Kind = SyntaxKind.IdentifierToken,
                         Value = tableName
@@ -148,7 +140,7 @@ namespace SqlParser.Core.Statements
                     {
                         tableName = e.Item2.Item2.Token.Value.ToString();
 
-                        nodes.Add(new SyntaxNode(new SyntaxToken
+                        tableNode.ChildNodes.Add(new SyntaxNode(new SyntaxToken
                         {
                             Kind = SyntaxKind.AsKeyword,
                             Value = e.Item2.Item1.Token.Value
@@ -156,7 +148,7 @@ namespace SqlParser.Core.Statements
 
                         if (e.Item2.Item2.Token.Kind == SyntaxKind.StringToken)
                         {
-                            nodes.Add(new SyntaxNode(new SyntaxToken
+                            tableNode.ChildNodes.Add(new SyntaxNode(new SyntaxToken
                             {
                                 Kind = SyntaxKind.StringToken,
                                 Value = tableName
@@ -164,7 +156,7 @@ namespace SqlParser.Core.Statements
                         }
                         else
                         {
-                            nodes.Add(new SyntaxNode(new SyntaxToken
+                            tableNode.ChildNodes.Add(new SyntaxNode(new SyntaxToken
                             {
                                 Kind = SyntaxKind.IdentifierToken,
                                 Value = tableName
@@ -172,35 +164,21 @@ namespace SqlParser.Core.Statements
                         }
                     }
 
-                    return nodes;
+                    return tableNode;
                 });
             var tablesList = Separated(Parser.Comma, table)
                 .Then(e =>
                 {
-                    tables.Clear();
-
-                    foreach (var node in e)
+                    for (int i = 1; i < e.Count; i += 2)
                     {
-                        if (node.Count == 3)
-                        {
-                            tables.Add(node[2].Token.Value.ToString());
-                        }
-                        else
-                        {
-                            tables.Add(node[0].Token.Value.ToString());
-                        }
-
-                        node.Add(new SyntaxNode(new SyntaxToken
+                        e.Insert(i, (new SyntaxNode(new SyntaxToken
                         {
                             Kind = SyntaxKind.CommaToken,
                             Value = ","
-                        }));
+                        })));
                     }
 
-                    var lastNode = e[e.Count - 1];
-                    lastNode.RemoveAt(lastNode.Count - 1);
-
-                    return e.SelectMany(n => n);
+                    return e;
                 });
             var selectStatement = Select
                 .Then(e => new SyntaxNode(new SyntaxToken
@@ -217,45 +195,41 @@ namespace SqlParser.Core.Statements
 
             Statement.Parser = selectStatement.Then<Statement>(e =>
             {
-                var statement = new SelectStatement(tables[0])
+                var tableNames = e.Item4
+                    .Where(n => n.Token.Kind != SyntaxKind.CommaToken)
+                    .Select(e => e.ChildNodes[0].Token.Value.ToString())
+                    .ToList();
+                var tableAliases = e.Item4
+                    .Where(n => n.Token.Kind != SyntaxKind.CommaToken && n.ChildNodes.Any(c => c.Kind == SyntaxKind.AsKeyword))
+                    .Select(e => e.ChildNodes[e.ChildNodes.Count - 1].Token.Value.ToString())
+                    .ToList();
+                var columnNames = e.Item2
+                    .Where(n => n.Token.Kind != SyntaxKind.CommaToken)
+                    .Select(e => e.ChildNodes[0].Token.Kind == SyntaxKind.AsteriskToken
+                        ? e.ChildNodes[0].Token.Value.ToString()
+                        : e.ChildNodes.Any(n => n.Kind == SyntaxKind.DotToken)
+                            ? e.ChildNodes[2].Token.Value.ToString()
+                            : e.ChildNodes[0].Token.Value.ToString())
+                    .ToList();
+                var columnAliases = e.Item2
+                    .Where(n => n.Token.Kind != SyntaxKind.CommaToken && n.ChildNodes.Any(c => c.Kind == SyntaxKind.AsKeyword))
+                    .Select(e => e.ChildNodes[e.ChildNodes.Count - 1].Token.Value.ToString())
+                    .ToList();
+                var statement = new SelectStatement(tableNames[0])
                 {
-                    TableNames = tables,
-                    ColumnNames = columns
+                    TableAliases = tableAliases,
+                    TableNames = tableNames,
+                    ColumnAliases = columnAliases,
+                    ColumnNames = columnNames
                 };
                 var selectClause = new SyntaxNode(new SyntaxToken { Kind = SyntaxKind.SelectClause });
                 var fromClause = new SyntaxNode(new SyntaxToken { Kind = SyntaxKind.FromClause });
 
                 selectClause.ChildNodes.Add(e.Item1);
 
-                for (int i = 0; i < e.Item2.Count; i++)
+                foreach (var node in e.Item2)
                 {
-                    if (e.Item2.Count == 1 && e.Item2[0].Item1.Token.Kind == SyntaxKind.AsteriskToken)
-                    {
-                        selectClause.ChildNodes.Add(e.Item2[0].Item1);
-                        break;
-                    }
-                    else
-                    {
-                        selectClause.ChildNodes.Add(e.Item2[i].Item1);
-
-                        if (e.Item2[i].Item2.Item1 != null && e.Item2[i].Item2.Item1 != EmptyNode)
-                        {
-                            selectClause.ChildNodes.Add(e.Item2[i].Item2.Item1);
-                            selectClause.ChildNodes.Add(e.Item2[i].Item2.Item2);
-                        }
-
-                        if (e.Item2[i].Item3.Item1 != null && e.Item2[i].Item3.Item1 != EmptyNode)
-                        {
-                            selectClause.ChildNodes.Add(e.Item2[i].Item3.Item1);
-                            selectClause.ChildNodes.Add(e.Item2[i].Item3.Item2.Item1);
-                        }
-
-                        if (e.Item2[i].Item3.Item2.Item2.Item1 != null && e.Item2[i].Item3.Item2.Item2.Item1 != EmptyNode)
-                        {
-                            selectClause.ChildNodes.Add(e.Item2[i].Item3.Item2.Item2.Item1);
-                            selectClause.ChildNodes.Add(e.Item2[i].Item3.Item2.Item2.Item2);
-                        }
-                    }
+                    selectClause.ChildNodes.Add(node);
                 }
 
                 fromClause.ChildNodes.Add(e.Item3);
@@ -277,7 +251,11 @@ namespace SqlParser.Core.Statements
 
         }
 
+        public IEnumerable<string> ColumnAliases { get; private set; }
+
         public IEnumerable<string> ColumnNames { get; private set; }
+
+        public IEnumerable<string> TableAliases { get; private set; }
 
         public IEnumerable<string> TableNames { get; private set; }
     }

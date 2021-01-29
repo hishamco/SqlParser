@@ -40,7 +40,6 @@
         UpdateClause,
         SetClause,
 
-
         // Statements
         DeleteStatement,
         InsertStatement,

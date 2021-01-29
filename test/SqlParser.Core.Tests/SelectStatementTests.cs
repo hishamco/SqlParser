@@ -31,10 +31,10 @@ namespace SqlParser.Tests
         }
 
         [Theory]
-        [InlineData("Select FirstName As Name From People", new string[] { "Name" }, new string[] { "People" })]
-        [InlineData("Select People.FirstName As Name From People", new string[] { "Name" }, new string[] { "People" })]
-        [InlineData("Select FirstName As 'First Name', LastName As 'Sure Name' From People", new string[] { "First Name", "Sure Name" }, new string[] { "People" })]
-        [InlineData("Select * From People As Persons", new string[] { "*" }, new string[] { "Persons" })]
+        [InlineData("Select FirstName As Name From People", new string[] { "Name" }, new string[] { })]
+        [InlineData("Select People.FirstName As Name From People", new string[] { "Name" }, new string[] { })]
+        [InlineData("Select FirstName As 'First Name', LastName As 'Sure Name' From People", new string[] { "First Name", "Sure Name" }, new string[] { })]
+        [InlineData("Select * From People As Persons", new string[] { }, new string[] { "Persons" })]
         [InlineData("Select FirstName As 'First Name', LastName As 'Sure Name' From People As Persons", new string[] { "First Name", "Sure Name" }, new string[] { "Persons" })]
         public void ParseColumnAndTableAliases(string text, string[] expectedColumnAliases, string[] expectedTableAliases)
         { 
@@ -47,8 +47,8 @@ namespace SqlParser.Tests
 
             // Assert
             var statement = result.Value as SelectStatement;
-            Assert.Equal(expectedColumnAliases, statement.ColumnNames.ToArray());
-            Assert.Equal(expectedTableAliases, statement.TableNames.ToArray());
+            Assert.Equal(expectedColumnAliases, statement.ColumnAliases.ToArray());
+            Assert.Equal(expectedTableAliases, statement.TableAliases.ToArray());
         }
 
         [Fact]
@@ -70,27 +70,27 @@ namespace SqlParser.Tests
             Assert.Equal(SyntaxKind.SelectClause, selectClause.Token.Kind);
             Assert.Equal(SyntaxKind.SelectKeyword, selectClause.ChildNodes[0].Token.Kind);
             Assert.Equal("SELECT", selectClause.ChildNodes[0].Token.Value);
-            Assert.Equal(SyntaxKind.IdentifierToken, selectClause.ChildNodes[1].Token.Kind);
-            Assert.Equal("Persons", selectClause.ChildNodes[1].Token.Value);
-            Assert.Equal(SyntaxKind.DotToken, selectClause.ChildNodes[2].Token.Kind);
-            Assert.Equal(SyntaxKind.IdentifierToken, selectClause.ChildNodes[3].Token.Kind);
-            Assert.Equal("FirstName", selectClause.ChildNodes[3].Token.Value);
-            Assert.Equal(SyntaxKind.CommaToken, selectClause.ChildNodes[4].Token.Kind);
-            Assert.Equal(SyntaxKind.IdentifierToken, selectClause.ChildNodes[5].Token.Kind);
-            Assert.Equal("LastName", selectClause.ChildNodes[5].Token.Value);
-            Assert.Equal(SyntaxKind.AsKeyword, selectClause.ChildNodes[6].Token.Kind);
-            Assert.Equal(SyntaxKind.StringToken, selectClause.ChildNodes[7].Token.Kind);
-            Assert.Equal("Sure Name", selectClause.ChildNodes[7].Token.Value);
+            Assert.Equal(SyntaxKind.IdentifierToken, selectClause.ChildNodes[1].ChildNodes[0].Token.Kind);
+            Assert.Equal("Persons", selectClause.ChildNodes[1].ChildNodes[0].Token.Value);
+            Assert.Equal(SyntaxKind.DotToken, selectClause.ChildNodes[1].ChildNodes[1].Token.Kind);
+            Assert.Equal(SyntaxKind.IdentifierToken, selectClause.ChildNodes[1].ChildNodes[2].Token.Kind);
+            Assert.Equal("FirstName", selectClause.ChildNodes[1].ChildNodes[2].Token.Value);
+            Assert.Equal(SyntaxKind.CommaToken, selectClause.ChildNodes[2].Token.Kind);
+            Assert.Equal(SyntaxKind.IdentifierToken, selectClause.ChildNodes[3].ChildNodes[0].Token.Kind);
+            Assert.Equal("LastName", selectClause.ChildNodes[3].ChildNodes[0].Token.Value);
+            Assert.Equal(SyntaxKind.AsKeyword, selectClause.ChildNodes[3].ChildNodes[1].Token.Kind);
+            Assert.Equal(SyntaxKind.StringToken, selectClause.ChildNodes[3].ChildNodes[2].Token.Kind);
+            Assert.Equal("Sure Name", selectClause.ChildNodes[3].ChildNodes[2].Token.Value);
 
             var fromClause = statement.Nodes[1];
             Assert.Equal(SyntaxKind.FromClause, fromClause.Token.Kind);
             Assert.Equal(SyntaxKind.FromKeyword, fromClause.ChildNodes[0].Token.Kind);
             Assert.Equal("FROM", fromClause.ChildNodes[0].Token.Value);
-            Assert.Equal(SyntaxKind.IdentifierToken, fromClause.ChildNodes[1].Token.Kind);
-            Assert.Equal("People", fromClause.ChildNodes[1].Token.Value);
-            Assert.Equal(SyntaxKind.AsKeyword, fromClause.ChildNodes[2].Token.Kind);
-            Assert.Equal(SyntaxKind.IdentifierToken, fromClause.ChildNodes[3].Token.Kind);
-            Assert.Equal("Persons", fromClause.ChildNodes[3].Token.Value);
+            Assert.Equal(SyntaxKind.IdentifierToken, fromClause.ChildNodes[1].ChildNodes[0].Token.Kind);
+            Assert.Equal("People", fromClause.ChildNodes[1].ChildNodes[0].Token.Value);
+            Assert.Equal(SyntaxKind.AsKeyword, fromClause.ChildNodes[1].ChildNodes[1].Token.Kind);
+            Assert.Equal(SyntaxKind.IdentifierToken, fromClause.ChildNodes[1].ChildNodes[2].Token.Kind);
+            Assert.Equal("Persons", fromClause.ChildNodes[1].ChildNodes[2].Token.Value);
         }
     }
 }
