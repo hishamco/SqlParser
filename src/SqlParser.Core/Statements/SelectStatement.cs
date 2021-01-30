@@ -33,19 +33,19 @@ namespace SqlParser.Core.Statements
 
         static SelectStatement()
         {
-            var number = Parser.Number
+            var number = SqlParser.Number
                .Then(e => new SyntaxNode(new SyntaxToken
                {
                    Kind = SyntaxKind.NumberToken,
                    Value = e
                }));
-            var identifier = Parser.Identifier
+            var identifier = SqlParser.Identifier
                 .Then(e => new SyntaxNode(new SyntaxToken
                 {
                     Kind = SyntaxKind.IdentifierToken,
                     Value = e.ToString()
                 }));
-            var stringLiteral = Parser.StringLiteral
+            var stringLiteral = SqlParser.StringLiteral
                 .Then(e => new SyntaxNode(new SyntaxToken
                 {
                     Kind = SyntaxKind.StringToken,
@@ -73,7 +73,7 @@ namespace SqlParser.Core.Statements
                         return columnNode;
                     })
                 .And(ZeroOrOne(
-                    Parser.Dot
+                    SqlParser.Dot
                     .And(identifier
                         .And(ZeroOrOne(
                             As.And(alias)))))
@@ -101,7 +101,7 @@ namespace SqlParser.Core.Statements
 
                     return columnNode;
                 })).Then(e => columnNode);
-            var columnsList = Parser.Asterisk
+            var columnsList = SqlParser.Asterisk
                 .Then(e =>
                 {
                     columnNode = new SyntaxNode(new SyntaxToken());
@@ -113,7 +113,7 @@ namespace SqlParser.Core.Statements
 
                     return new List<SyntaxNode> { columnNode };
                 })
-                .Or(Separated(Parser.Comma, column))
+                .Or(Separated(SqlParser.Comma, column))
                 .Then(e =>
                 {
                     for (int i = 1; i < e.Count; i += 2)
@@ -174,7 +174,7 @@ namespace SqlParser.Core.Statements
 
                     return tableNode;
                 });
-            var tablesList = Separated(Parser.Comma, table)
+            var tablesList = Separated(SqlParser.Comma, table)
                 .Then(e =>
                 {
                     for (int i = 1; i < e.Count; i += 2)
@@ -194,7 +194,7 @@ namespace SqlParser.Core.Statements
                     Kind = SyntaxKind.TopKeyword,
                     Value = e
                 }))
-                .And(Between(Parser.OpenParen, number, Parser.CloseParen)))
+                .And(Between(SqlParser.OpenParen, number, SqlParser.CloseParen)))
                 .Then(e => new List<SyntaxNode>
                     {
                         e.Item1,

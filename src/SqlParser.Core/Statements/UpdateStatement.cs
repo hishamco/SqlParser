@@ -26,25 +26,25 @@ namespace SqlParser.Core.Statements
 
         static UpdateStatement()
         {
-            var number = Parser.Number
+            var number = SqlParser.Number
                 .Then(e => new SyntaxNode(new SyntaxToken
                 {
                     Kind = SyntaxKind.NumberToken,
                     Value = e
                 }));
-            var boolean = Parser.Boolean
+            var boolean = SqlParser.Boolean
                 .Then(e => new SyntaxNode(new SyntaxToken
                 {
                     Kind = SyntaxKind.IdentifierToken,
                     Value = Convert.ToBoolean(e)
                 }));
-            var stringLiteral = Parser.StringLiteral
+            var stringLiteral = SqlParser.StringLiteral
                 .Then(e => new SyntaxNode(new SyntaxToken
                 {
                     Kind = SyntaxKind.StringToken,
                     Value = e.ToString()
                 }));
-            var identifier = Parser.Identifier
+            var identifier = SqlParser.Identifier
                 .Then(e => new SyntaxNode(new SyntaxToken
                 {
                     Kind = SyntaxKind.IdentifierToken,
@@ -53,7 +53,7 @@ namespace SqlParser.Core.Statements
             var terminal = number.Or(boolean).Or(stringLiteral).Or(identifier);
             var columns = new List<string>();
             var values = new List<object>();
-            var columnsAssignment = Separated(Parser.Comma, identifier
+            var columnsAssignment = Separated(SqlParser.Comma, identifier
                 .And(Equal
                     .Then(e => new SyntaxNode(new SyntaxToken
                     {

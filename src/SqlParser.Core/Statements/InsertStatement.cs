@@ -26,25 +26,25 @@ namespace SqlParser.Core.Statements
 
         static InsertStatement()
         {
-            var number = Parser.Number
+            var number = SqlParser.Number
                 .Then(e => new SyntaxNode(new SyntaxToken
                 {
                     Kind = SyntaxKind.NumberToken,
                     Value = e
                 }));
-            var boolean = Parser.Boolean
+            var boolean = SqlParser.Boolean
                 .Then(e => new SyntaxNode(new SyntaxToken
                 {
                     Kind = SyntaxKind.IdentifierToken,
                     Value = Convert.ToBoolean(e)
                 }));
-            var stringLiteral = Parser.StringLiteral
+            var stringLiteral = SqlParser.StringLiteral
                 .Then(e => new SyntaxNode(new SyntaxToken
                 {
                     Kind = SyntaxKind.StringToken,
                     Value = e.ToString()
                 }));
-            var identifier = Parser.Identifier
+            var identifier = SqlParser.Identifier
                 .Then(e => new SyntaxNode(new SyntaxToken
                 {
                     Kind = SyntaxKind.IdentifierToken,
@@ -53,14 +53,14 @@ namespace SqlParser.Core.Statements
             var terminal = number.Or(boolean).Or(stringLiteral).Or(identifier);
             var columns = new List<string>();
             var values = new List<object>();
-            var columnsList = ZeroOrOne(Between(Parser.OpenParen, Separated(Parser.Comma, identifier)
+            var columnsList = ZeroOrOne(Between(SqlParser.OpenParen, Separated(SqlParser.Comma, identifier)
                 .Then(e =>
                 {
                     columns.Clear();
                     columns.AddRange(e.Select(n => n.Token.Value.ToString()));
 
                     return e;
-                }), Parser.CloseParen)
+                }), SqlParser.CloseParen)
             .Then(e =>
             {
                 if (e.Count > 0)
@@ -77,26 +77,26 @@ namespace SqlParser.Core.Statements
                     e.Insert(0, new SyntaxNode(new SyntaxToken
                     {
                         Kind = SyntaxKind.OpenParenthesisToken,
-                        Value = Parser.OpenParen.Then(e => e)
+                        Value = SqlParser.OpenParen.Then(e => e)
                     }));
 
                     e.Add(new SyntaxNode(new SyntaxToken
                     {
                         Kind = SyntaxKind.CloseParenthesisToken,
-                        Value = Parser.CloseParen.Then(e => e)
+                        Value = SqlParser.CloseParen.Then(e => e)
                     }));
                 }
 
                 return e;
             }));
-            var valuesList = Between(Parser.OpenParen, Separated(Parser.Comma, terminal)
+            var valuesList = Between(SqlParser.OpenParen, Separated(SqlParser.Comma, terminal)
                 .Then(e =>
                 {
                     values.Clear();
                     values.AddRange(e.Select(n => n.Token.Value));
 
                     return e;
-                }), Parser.CloseParen)
+                }), SqlParser.CloseParen)
                 .Then(e =>
                 {
                     for (int i = 1; i < e.Count; i += 2)
@@ -111,13 +111,13 @@ namespace SqlParser.Core.Statements
                     e.Insert(0, new SyntaxNode(new SyntaxToken
                     {
                         Kind = SyntaxKind.OpenParenthesisToken,
-                        Value = Parser.OpenParen.Then(e => e)
+                        Value = SqlParser.OpenParen.Then(e => e)
                     }));
 
                     e.Add(new SyntaxNode(new SyntaxToken
                     {
                         Kind = SyntaxKind.CloseParenthesisToken,
-                        Value = Parser.CloseParen.Then(e => e)
+                        Value = SqlParser.CloseParen.Then(e => e)
                     }));
 
                     return e;

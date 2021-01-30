@@ -32,7 +32,7 @@ namespace SqlParser.Core
      * 
      * sign ::= (+ | -)
      */
-    public class Parser : ISqlParser
+    public class SqlParser : ISqlParser
     {
         internal protected static readonly Parser<char> Plus = Terms.Char('+');
         internal protected static readonly Parser<char> Minus = Terms.Char('-');
@@ -58,7 +58,7 @@ namespace SqlParser.Core
         public readonly Deferred<Expression> Expression = Deferred<Expression>();
         public readonly Deferred<List<Statement>> Grammar = Deferred<List<Statement>>();
 
-        public Parser()
+        public SqlParser()
         {
             var number = Number
                 .Then<Expression>(e => new NumericExpression(e));

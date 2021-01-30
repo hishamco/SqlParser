@@ -18,7 +18,7 @@ namespace SqlParser.Core.Statements
 
         static DeleteStatement()
         {
-            var identifier = Parser.Identifier
+            var identifier = SqlParser.Identifier
                 .Then(e => new SyntaxNode(new SyntaxToken
                 {
                     Kind = SyntaxKind.IdentifierToken,

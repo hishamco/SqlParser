@@ -9,7 +9,7 @@ using Xunit;
 
 namespace SqlParser.Tests
 {
-    public class ParserTests
+    public class SqlParserTests
     {
         [Theory]
         [InlineData("12", 12)]
@@ -17,7 +17,7 @@ namespace SqlParser.Tests
         public async Task ParseNumberExpression(string text, decimal expected)
         {
             // Arrange
-            var parser = new Parser();
+            var parser = new Core.SqlParser();
             var context = new SqlContext(text);
             var result = new ParseResult<Expression>();
 
@@ -38,7 +38,7 @@ namespace SqlParser.Tests
         public async Task ParseBooleanExpression(string text, bool expected)
         {
             // Arrange
-            var parser = new Parser();
+            var parser = new Core.SqlParser();
             var context = new SqlContext(text);
             var result = new ParseResult<Expression>();
 
@@ -57,7 +57,7 @@ namespace SqlParser.Tests
         public async Task ParseStringExpression(string text, string expected)
         {
             // Arrange
-            var parser = new Parser();
+            var parser = new Core.SqlParser();
             var context = new SqlContext(text);
             var result = new ParseResult<Expression>();
 
@@ -78,7 +78,7 @@ namespace SqlParser.Tests
         public async Task ParseIdentifierExpression(string text, string expected)
         {
             // Arrange
-            var parser = new Parser();
+            var parser = new Core.SqlParser();
             var context = new SqlContext(text);
             var result = new ParseResult<Expression>();
 
@@ -97,7 +97,7 @@ namespace SqlParser.Tests
         public async Task ParseGroupExpression(string text, decimal expected)
         {
             // Arrange
-            var parser = new Parser();
+            var parser = new Core.SqlParser();
             var context = new SqlContext(text);
             var result = new ParseResult<Expression>();
 
@@ -122,7 +122,7 @@ namespace SqlParser.Tests
         public async Task EvaluateArithmaticExpression(string text, decimal expected)
         {
             // Arrange
-            var parser = new Parser();
+            var parser = new Core.SqlParser();
             var context = new SqlContext(text);
             var result = new ParseResult<Expression>();
 
@@ -148,7 +148,7 @@ namespace SqlParser.Tests
         public void ParseSqlStatement(string commandText, int statementsNo, string expectedStatmentType)
         {
             // Arrange
-            var parser = new Parser();
+            var parser = new Core.SqlParser();
 
             // Act
             var statements = parser.Parse(commandText);
@@ -164,7 +164,7 @@ namespace SqlParser.Tests
         public void ParseMultipleSqlStatements(string commandText, int statementsNo)
         {
             // Arrange
-            var parser = new Parser();
+            var parser = new Core.SqlParser();
 
             // Act
             var statements = parser.Parse(commandText);
