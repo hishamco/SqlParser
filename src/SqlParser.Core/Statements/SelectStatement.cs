@@ -282,6 +282,12 @@ namespace SqlParser.Core.Statements
                         .Where(n => n.Token.Kind != SyntaxKind.CommaToken)
                         .Select(e => e.Token.Value.ToString())
                         .ToList();
+                    // Avoid select clause values to contain FROM
+                    if (values.Contains("FROM"))
+                    {
+                        return null;
+                    }
+                    
                     var valueAliases = e.Item4
                         .Where(n => n.Token.Kind != SyntaxKind.CommaToken && n.ChildNodes.Any(c => c.Kind == SyntaxKind.AsKeyword))
                         .Select(e => e.ChildNodes[e.ChildNodes.Count - 1].Token.Value.ToString())

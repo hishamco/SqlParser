@@ -151,7 +151,9 @@ namespace SqlParser.Core
         {
             Grammar.TryParse(commandText, out List<Statement> statements);
 
-            return statements ?? Enumerable.Empty<Statement>();
+            return statements == null
+                ? Enumerable.Empty<Statement>()
+                : statements.Where(s => s != null);
         }
     }
 }
