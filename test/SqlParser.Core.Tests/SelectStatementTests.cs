@@ -17,6 +17,7 @@ namespace SqlParser.Tests
         [InlineData("Select 'Test'", 2)]
         [InlineData("select 1 + 3", 2)]
         [InlineData("select 1 + 3 As Alias", 2)]
+        [InlineData("select Max(Id)", 2)]
         public void ParseSelectClause(string text, int expectedNodesCount)
         {
             // Arrange
@@ -56,6 +57,7 @@ namespace SqlParser.Tests
             Assert.Equal(SyntaxKind.NumberToken, selectClause.ChildNodes[1].ChildNodes[0].ChildNodes[1].Token.Kind);
             Assert.Equal(3M, selectClause.ChildNodes[1].ChildNodes[0].ChildNodes[1].Token.Value);
         }
+
         [Fact]
         public void ParseValuesWithAliasInSelectClause()
         {
@@ -83,6 +85,40 @@ namespace SqlParser.Tests
             Assert.Equal(SyntaxKind.AsKeyword, selectClause.ChildNodes[5].ChildNodes[0].Token.Kind);
             Assert.Equal(SyntaxKind.StringToken, selectClause.ChildNodes[5].ChildNodes[1].Token.Kind);
             Assert.Equal("Alias", selectClause.ChildNodes[5].ChildNodes[1].Token.Value);
+        }
+
+        [Fact]
+        public void ParseFunctionInSelectClause()
+        {
+            // Arrange
+            var context = new SqlContext("Select Count(Id) As 'Total No', Sum(Mark)");
+            var result = new ParseResult<Statement>();
+
+            // Act
+            SelectStatement.Statement.Parse(context, ref result);
+
+            // Assert
+            var statement = result.Value as SelectStatement;
+            var selectClause = statement.Nodes[0];
+            Assert.Equal(SyntaxKind.SelectClause, selectClause.Token.Kind);
+            Assert.Equal(SyntaxKind.SelectKeyword, selectClause.ChildNodes[0].Token.Kind);
+            Assert.Equal("SELECT", selectClause.ChildNodes[0].Token.Value);
+            Assert.Equal(SyntaxKind.IdentifierToken, selectClause.ChildNodes[1].Token.Kind);
+            Assert.Equal("Count", selectClause.ChildNodes[1].Token.Value);
+            Assert.Equal(SyntaxKind.OpenParenthesisToken, selectClause.ChildNodes[1].ChildNodes[0].Token.Kind);
+            Assert.Equal(SyntaxKind.IdentifierToken, selectClause.ChildNodes[1].ChildNodes[1].Token.Kind);
+            Assert.Equal("Id", selectClause.ChildNodes[1].ChildNodes[1].Token.Value);
+            Assert.Equal(SyntaxKind.CloseParenthesisToken, selectClause.ChildNodes[1].ChildNodes[2].Token.Kind);
+            Assert.Equal(SyntaxKind.AsKeyword, selectClause.ChildNodes[1].ChildNodes[3].Token.Kind);
+            Assert.Equal(SyntaxKind.StringToken, selectClause.ChildNodes[1].ChildNodes[4].Token.Kind);
+            Assert.Equal("Total No", selectClause.ChildNodes[1].ChildNodes[4].Token.Value);
+            Assert.Equal(SyntaxKind.CommaToken, selectClause.ChildNodes[2].Token.Kind);
+            Assert.Equal(SyntaxKind.IdentifierToken, selectClause.ChildNodes[3].Token.Kind);
+            Assert.Equal("Sum", selectClause.ChildNodes[3].Token.Value);
+            Assert.Equal(SyntaxKind.OpenParenthesisToken, selectClause.ChildNodes[3].ChildNodes[0].Token.Kind);
+            Assert.Equal(SyntaxKind.IdentifierToken, selectClause.ChildNodes[3].ChildNodes[1].Token.Kind);
+            Assert.Equal("Mark", selectClause.ChildNodes[3].ChildNodes[1].Token.Value);
+            Assert.Equal(SyntaxKind.CloseParenthesisToken, selectClause.ChildNodes[3].ChildNodes[2].Token.Kind);
         }
 
         [Theory]

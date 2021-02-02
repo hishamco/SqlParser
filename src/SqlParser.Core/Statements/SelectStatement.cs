@@ -17,7 +17,11 @@ namespace SqlParser.Core.Statements
      * 
      * valuesList ::= value (, value)*
      * 
-     * value ::= expression (AS alias)?
+     * value ::= (expression | functionExpression) (AS alias)?
+     * 
+     * functionExpression ::= identifier '(' functionParameters ')'
+     * 
+     * functionParameters :: expression (, expression)*
      * 
      * tablesList ::= tableName (, tableName)*
      * 
@@ -131,7 +135,44 @@ namespace SqlParser.Core.Statements
 
                     return e;
                 });
-            var value = new SqlParser().Expression
+            var expression = new SqlParser().Expression;
+            var functionExpression = identifier
+                .And(Between(SqlParser.OpenParen, Separated(SqlParser.Comma, expression), SqlParser.CloseParen)
+                    .Then(e =>
+                    {
+                        for (int i = 1; i < e.Count; i += 2)
+                        {
+                            e.Insert(i, (new SyntaxNode(new SyntaxToken
+                            {
+                                Kind = SyntaxKind.CommaToken,
+                                Value = ","
+                            })));
+                        }
+
+                        return e;
+                    }))
+                .Then(e =>
+                {
+                    e.Item1.ChildNodes.Add(new SyntaxNode(new SyntaxToken
+                    {
+                        Kind = SyntaxKind.OpenParenthesisToken,
+                        Value = '('
+                    }));
+
+                    foreach (var node in e.Item2)
+                    {
+                        e.Item1.ChildNodes.Add(node);
+                    }
+
+                    e.Item1.ChildNodes.Add(new SyntaxNode(new SyntaxToken
+                    {
+                        Kind = SyntaxKind.CloseParenthesisToken,
+                        Value = ')'
+                    }));
+
+                    return e.Item1;
+                });
+            var value = functionExpression.Or(expression)
                 .And(ZeroOrOne(As.And(alias))).Then(e =>
                 {
                     var valueNode = e.Item1;
@@ -287,7 +328,7 @@ namespace SqlParser.Core.Statements
                     {
                         return null;
                     }
-                    
+
                     var valueAliases = e.Item4
                         .Where(n => n.Token.Kind != SyntaxKind.CommaToken && n.ChildNodes.Any(c => c.Kind == SyntaxKind.AsKeyword))
                         .Select(e => e.ChildNodes[e.ChildNodes.Count - 1].Token.Value.ToString())
