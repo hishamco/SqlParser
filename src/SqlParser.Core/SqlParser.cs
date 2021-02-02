@@ -1,7 +1,7 @@
 ﻿using Parlot;
 using Parlot.Fluent;
-using SqlParser.Core.Expressions;
 using SqlParser.Core.Statements;
+using SqlParser.Core.Syntax;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -12,10 +12,8 @@ namespace SqlParser.Core
     /*
      * statement ::= selectStatement | insertStatement | deleteStatement | updateStatement
      * 
-     * expression ::= experssion + factor | expression - factor | factor
-     * 
-     * factor ::= factor * terminal | factor / terminal | factor % terminal | terminal
-     * 
+     * expression ::= experssion + experssion | expression - experssion | experssion * experssion | experssion / experssion | experssion % experssion | (expression) | terminal
+     *
      * terminal :: identifier | number | boolean | string | (expression)
      * 
      * identifier ::= (letter)(letter | digit)*
@@ -55,59 +53,92 @@ namespace SqlParser.Core
         internal protected static readonly Parser<TextSpan> StringLiteral = Terms.String(StringLiteralQuotes.SingleOrDouble);
         internal protected static readonly Parser<TextSpan> Identifier = Terms.Identifier();
 
-        public readonly Deferred<Expression> Expression = Deferred<Expression>();
         public readonly Deferred<List<Statement>> Grammar = Deferred<List<Statement>>();
+        public readonly Deferred<SyntaxNode> Expression = Deferred<SyntaxNode>();
 
         public SqlParser()
         {
             var number = Number
-                .Then<Expression>(e => new NumericExpression(e));
-            var boolean = Boolean.Then<Expression>(e => new BooleanExpression(Convert.ToBoolean(e)));
-            var stringLiteral = StringLiteral.Then<Expression>(e => new LiteralExpression(e.ToString()));
-            var identifier = Identifier.Then<Expression>(e => new IdentifierExpression(e.ToString()));
+               .Then(e => new SyntaxNode(new SyntaxToken
+               {
+                   Kind = SyntaxKind.NumberToken,
+                   Value = e
+               }));
+            var boolean = Boolean
+               .Then(e => new SyntaxNode(new SyntaxToken
+               {
+                   Kind = SyntaxKind.BooleanToken,
+                   Value = Convert.ToBoolean(e)
+               }));
+            var identifier = Identifier
+                .Then(e => new SyntaxNode(new SyntaxToken
+                {
+                    Kind = SyntaxKind.IdentifierToken,
+                    Value = e.ToString()
+                }));
+            var stringLiteral = StringLiteral
+                .Then(e => new SyntaxNode(new SyntaxToken
+                {
+                    Kind = SyntaxKind.StringToken,
+                    Value = e.ToString()
+                }));
             var groupExpression = Between(OpenParen, Expression, CloseParen);
             var terminal = number
                 .Or(boolean)
                 .Or(stringLiteral)
                 .Or(identifier)
                 .Or(groupExpression);
-            var unary = Recursive<Expression>(e => Minus.And(e)
-                .Then<Expression>(e => new NegateExpression(e.Item2)).Or(terminal));
+            var unary = Recursive<SyntaxNode>(e => Minus.And(e)
+                .Then(e => e.Item2).Or(terminal));
             var factor = unary.And(ZeroOrMany(Times.Or(Divided).Or(Modulo).And(unary)))
                 .Then(e =>
                 {
-                    var result = e.Item1;
+                    var node = e.Item1;
                     foreach (var op in e.Item2)
                     {
-                        result = op.Item1 switch
+                        node = new SyntaxNode(new SyntaxToken
                         {
-                            '*' => new MultiplicationExpression(result, op.Item2),
-                            '/' => new DivisionExpression(result, op.Item2),
-                            '%' => new ModulusExpression(result, op.Item2),
-                            _ => null
-                        };
+                            Kind = op.Item1 switch
+                            {
+                                '*' => SyntaxKind.TimesToken,
+                                '/' => SyntaxKind.DivideToken,
+                                '%' => SyntaxKind.ModuloToken,
+                                _ => SyntaxKind.None
+                            },
+                            Value = op.Item1
+                        });
+
+                        node.ChildNodes.Add(e.Item1);
+                        node.ChildNodes.Add(op.Item2);
                     }
 
-                    return result;
+                    return node;
                 });
-
             Expression.Parser = factor.And(ZeroOrMany(Plus.Or(Minus).And(factor)))
                 .Then(e =>
                 {
-                    var result = e.Item1;
+                    var node = e.Item1;
                     foreach (var op in e.Item2)
                     {
-                        result = op.Item1 switch
+                        var prevNode = node;
+
+                        node = new SyntaxNode(new SyntaxToken
                         {
-                            '+' => new AdditionExpression(result, op.Item2),
-                            '-' => new SubtractionExpression(result, op.Item2),
-                            _ => null
-                        };
+                            Kind = op.Item1 switch
+                            {
+                                '+' => SyntaxKind.PlusToken,
+                                '-' => SyntaxKind.MinusToken,
+                                _ => SyntaxKind.None
+                            },
+                            Value = op.Item1
+                        }); ;
+
+                        node.ChildNodes.Add(prevNode);
+                        node.ChildNodes.Add(op.Item2);
                     }
 
-                    return result;
+                    return node;
                 });
-
             var statement = DeleteStatement.Statement
                 .Or(SelectStatement.Statement)
                 .Or(InsertStatement.Statement)

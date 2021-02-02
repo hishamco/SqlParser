@@ -1,10 +1,8 @@
 ﻿using Parlot;
 using SqlParser.Core;
-using SqlParser.Core.Expressions;
 using SqlParser.Core.Statements;
-using SqlParser.Core.Values;
+using SqlParser.Core.Syntax;
 using System.Linq;
-using System.Threading.Tasks;
 using Xunit;
 
 namespace SqlParser.Tests
@@ -14,20 +12,20 @@ namespace SqlParser.Tests
         [Theory]
         [InlineData("12", 12)]
         [InlineData("12.5", 12.5)]
-        public async Task ParseNumberExpression(string text, decimal expected)
+        public void ParseNumberExpression(string text, decimal expected)
         {
             // Arrange
             var parser = new Core.SqlParser();
             var context = new SqlContext(text);
-            var result = new ParseResult<Expression>();
+            var result = new ParseResult<SyntaxNode>();
 
             // Arrange
             parser.Expression.Parse(context, ref result);
 
-            var value = await (result.Value as NumericExpression).EvaluateAsync();
-
             // Assert
-            Assert.Equal(new NumberValue(expected), value);
+            var value = result.Value;
+            Assert.Equal(SyntaxKind.NumberToken, value.Kind);
+            Assert.Equal(expected, value.Token.Value);
         }
 
         [Theory]
@@ -35,39 +33,39 @@ namespace SqlParser.Tests
         [InlineData("trUE", true)]
         [InlineData("false", false)]
         [InlineData("False", false)]
-        public async Task ParseBooleanExpression(string text, bool expected)
+        public void ParseBooleanExpression(string text, bool expected)
         {
             // Arrange
             var parser = new Core.SqlParser();
             var context = new SqlContext(text);
-            var result = new ParseResult<Expression>();
+            var result = new ParseResult<SyntaxNode>();
 
             // Arrange
             parser.Expression.Parse(context, ref result);
 
-            var value = await (result.Value as BooleanExpression).EvaluateAsync();
-
             // Assert
-            Assert.Equal(new BooleanValue(expected), value);
+            var value = result.Value;
+            Assert.Equal(SyntaxKind.BooleanToken, value.Kind);
+            Assert.Equal(expected, value.Token.Value);
         }
 
         [Theory]
         [InlineData("\"Hisham\"", "Hisham")]
         [InlineData("\'Hisham\'", "Hisham")]
-        public async Task ParseStringExpression(string text, string expected)
+        public void ParseStringExpression(string text, string expected)
         {
             // Arrange
             var parser = new Core.SqlParser();
             var context = new SqlContext(text);
-            var result = new ParseResult<Expression>();
+            var result = new ParseResult<SyntaxNode>();
 
             // Arrange
             parser.Expression.Parse(context, ref result);
 
-            var value = await (result.Value as LiteralExpression).EvaluateAsync();
-
             // Assert
-            Assert.Equal(new StringValue(expected), value);
+            var value = result.Value;
+            Assert.Equal(SyntaxKind.StringToken, value.Kind);
+            Assert.Equal(expected, value.Token.Value);
         }
 
         [Theory]
@@ -75,64 +73,39 @@ namespace SqlParser.Tests
         [InlineData("Name123", "Name123")]
         [InlineData("_Name", "_Name")]
         [InlineData("First_Name", "First_Name")]
-        public async Task ParseIdentifierExpression(string text, string expected)
+        public void ParseIdentifierExpression(string text, string expected)
         {
             // Arrange
             var parser = new Core.SqlParser();
             var context = new SqlContext(text);
-            var result = new ParseResult<Expression>();
+            var result = new ParseResult<SyntaxNode>();
 
             // Arrange
             parser.Expression.Parse(context, ref result);
 
-            var value = await(result.Value as LiteralExpression).EvaluateAsync();
-
             // Assert
-            Assert.Equal(new StringValue(expected), value);
+            var value = result.Value;
+            Assert.Equal(SyntaxKind.IdentifierToken, value.Kind);
+            Assert.Equal(expected, value.Token.Value);
         }
 
         [Theory]
         [InlineData("(120)", 120)]
         [InlineData("(12.3)", 12.3)]
-        public async Task ParseGroupExpression(string text, decimal expected)
+        public void ParseGroupExpression(string text, decimal expected)
         {
             // Arrange
             var parser = new Core.SqlParser();
             var context = new SqlContext(text);
-            var result = new ParseResult<Expression>();
+            var result = new ParseResult<SyntaxNode>();
 
             // Arrange
             parser.Expression.Parse(context, ref result);
 
-            var value = await (result.Value as NumericExpression).EvaluateAsync();
-
             // Assert
-            Assert.Equal(new NumberValue(expected), value);
-        }
-
-        [Theory]
-        [InlineData("5+2", 7)]
-        [InlineData("5-2", 3)]
-        [InlineData("5*2", 10)]
-        [InlineData("-5*2", -10)]
-        [InlineData("5/2", 2.5)]
-        [InlineData("5%2", 1)]
-        [InlineData("12*3-6+70", 100)]
-        [InlineData("150+50-5*5", 175)]
-        public async Task EvaluateArithmaticExpression(string text, decimal expected)
-        {
-            // Arrange
-            var parser = new Core.SqlParser();
-            var context = new SqlContext(text);
-            var result = new ParseResult<Expression>();
-
-            // Arrange
-            parser.Expression.Parse(context, ref result);
-
-            var value = await(result.Value as BinaryExpression).EvaluateAsync();
-
-            // Assert
-            Assert.Equal(new NumberValue(expected), value);
+            var value = result.Value;
+            Assert.Equal(SyntaxKind.NumberToken, value.Kind);
+            Assert.Equal(expected, value.Token.Value);
         }
 
         [Theory]

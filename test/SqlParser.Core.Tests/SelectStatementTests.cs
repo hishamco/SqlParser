@@ -10,11 +10,87 @@ namespace SqlParser.Tests
     public class SelectStatementTests
     {
         [Theory]
+        [InlineData("Select 1", 2)]
+        [InlineData("Select 1 As Alias", 2)]
+        [InlineData("Select 1, 2, 3", 6)]
+        [InlineData("Select true", 2)]
+        [InlineData("Select 'Test'", 2)]
+        [InlineData("select 1 + 3", 2)]
+        [InlineData("select 1 + 3 As Alias", 2)]
+        public void ParseSelectClause(string text, int expectedNodesCount)
+        {
+            // Arrange
+            var context = new SqlContext(text);
+            var result = new ParseResult<Statement>();
+
+            // Act
+            SelectStatement.Statement.Parse(context, ref result);
+
+            // Assert
+            var statement = result.Value as SelectStatement;
+            Assert.Equal(expectedNodesCount, statement.Nodes[0].ChildNodes.Count);
+        }
+
+        [Fact]
+        public void ParseExpressionInSelectClause()
+        {
+            // Arrange
+            var context = new SqlContext("Select 1 + 3 - 2");
+            var result = new ParseResult<Statement>();
+
+            // Act
+            SelectStatement.Statement.Parse(context, ref result);
+
+            // Assert
+            var statement = result.Value as SelectStatement;
+            var selectClause = statement.Nodes[0];
+            Assert.Equal(SyntaxKind.SelectClause, selectClause.Token.Kind);
+            Assert.Equal(SyntaxKind.SelectKeyword, selectClause.ChildNodes[0].Token.Kind);
+            Assert.Equal("SELECT", selectClause.ChildNodes[0].Token.Value);
+            Assert.Equal(SyntaxKind.MinusToken, selectClause.ChildNodes[1].Token.Kind);
+            Assert.Equal(SyntaxKind.PlusToken, selectClause.ChildNodes[1].ChildNodes[0].Token.Kind);
+            Assert.Equal(SyntaxKind.NumberToken, selectClause.ChildNodes[1].ChildNodes[1].Token.Kind);
+            Assert.Equal(2M, selectClause.ChildNodes[1].ChildNodes[1].Token.Value);
+            Assert.Equal(SyntaxKind.NumberToken, selectClause.ChildNodes[1].ChildNodes[0].ChildNodes[0].Token.Kind);
+            Assert.Equal(1M, selectClause.ChildNodes[1].ChildNodes[0].ChildNodes[0].Token.Value);
+            Assert.Equal(SyntaxKind.NumberToken, selectClause.ChildNodes[1].ChildNodes[0].ChildNodes[1].Token.Kind);
+            Assert.Equal(3M, selectClause.ChildNodes[1].ChildNodes[0].ChildNodes[1].Token.Value);
+        }
+        [Fact]
+        public void ParseValuesWithAliasInSelectClause()
+        {
+            // Arrange
+            var context = new SqlContext("Select 1, 2, 3 AS 'Alias'");
+            var result = new ParseResult<Statement>();
+
+            // Act
+            SelectStatement.Statement.Parse(context, ref result);
+
+            // Assert
+            var statement = result.Value as SelectStatement;
+            var selectClause = statement.Nodes[0];
+            Assert.Equal(SyntaxKind.SelectClause, selectClause.Token.Kind);
+            Assert.Equal(SyntaxKind.SelectKeyword, selectClause.ChildNodes[0].Token.Kind);
+            Assert.Equal("SELECT", selectClause.ChildNodes[0].Token.Value);
+            Assert.Equal(SyntaxKind.NumberToken, selectClause.ChildNodes[1].Token.Kind);
+            Assert.Equal(1M, selectClause.ChildNodes[1].Token.Value);
+            Assert.Equal(SyntaxKind.CommaToken, selectClause.ChildNodes[2].Token.Kind);
+            Assert.Equal(SyntaxKind.NumberToken, selectClause.ChildNodes[3].Token.Kind);
+            Assert.Equal(2M, selectClause.ChildNodes[3].Token.Value);
+            Assert.Equal(SyntaxKind.CommaToken, selectClause.ChildNodes[4].Token.Kind);
+            Assert.Equal(SyntaxKind.NumberToken, selectClause.ChildNodes[5].Token.Kind);
+            Assert.Equal(3M, selectClause.ChildNodes[5].Token.Value);
+            Assert.Equal(SyntaxKind.AsKeyword, selectClause.ChildNodes[5].ChildNodes[0].Token.Kind);
+            Assert.Equal(SyntaxKind.StringToken, selectClause.ChildNodes[5].ChildNodes[1].Token.Kind);
+            Assert.Equal("Alias", selectClause.ChildNodes[5].ChildNodes[1].Token.Value);
+        }
+
+        [Theory]
         [InlineData("Select * From People", new[] { "People" }, new[] { "*" })]
         [InlineData("Select FirstName From People", new[] { "People" }, new[] { "FirstName" })]
         [InlineData("Select FirstName, LastName From People", new[] { "People" }, new[] { "FirstName", "LastName" })]
         [InlineData("select * from People, Contacts", new[] { "People", "Contacts" }, new[] { "*" })]
-        [InlineData("select People.FirstName, Contatcs.Address from People, Contacts", new[] { "People", "Contacts" }, new[] { "FirstName", "Address" })]
+        [InlineData("select People.FirstName, Contacts.Address from People, Contacts", new[] { "People", "Contacts" }, new[] { "FirstName", "Address" })]
         public void ParseSelectStatement(string text, string[] expectedTableNames, string[] expectedColumnNames)
         {
             // Arrange
