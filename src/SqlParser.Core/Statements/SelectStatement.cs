@@ -19,7 +19,7 @@ namespace SqlParser.Core.Statements
      * 
      * value ::= (expression | functionExpression) (AS alias)?
      * 
-     * functionExpression ::= identifier '(' functionParameters ')'
+     * functionExpression ::= identifier '(' ('*' | functionParameters) ')'
      * 
      * functionParameters :: functionParameter (, functionParameter)*
      * 
@@ -63,7 +63,7 @@ namespace SqlParser.Core.Statements
                 }));
             var alias = identifier.Or(stringLiteral);
             var expression = new SqlParser().Expression;
-            var functionParaemeter = ZeroOrOne(identifier.And(SqlParser.Dot))
+            var functionParameter = ZeroOrOne(identifier.And(SqlParser.Dot))
                 .And(identifier
                     .And(ZeroOrOne(As.And(alias))))
                 .Then(e =>
@@ -101,8 +101,18 @@ namespace SqlParser.Core.Statements
                     return paramNode;
                 })
                 .Or(expression);
+            var functionParameters = SqlParser.Asterisk
+                .Then(e => new List<SyntaxNode>
+                {
+                    new SyntaxNode(new SyntaxToken
+                    {
+                        Kind = SyntaxKind.AsteriskToken,
+                        Value = e
+                    })
+                })
+                .Or(Separated(SqlParser.Comma, functionParameter));
             var functionExpression = identifier
-                .And(Between(SqlParser.OpenParen, Separated(SqlParser.Comma, functionParaemeter), SqlParser.CloseParen)
+                .And(Between(SqlParser.OpenParen, functionParameters, SqlParser.CloseParen)
                     .Then(e =>
                     {
                         for (int i = 1; i < e.Count; i += 2)

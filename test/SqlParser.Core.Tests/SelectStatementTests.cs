@@ -17,6 +17,7 @@ namespace SqlParser.Tests
         [InlineData("Select 'Test'", 2)]
         [InlineData("select 1 + 3", 2)]
         [InlineData("select 1 + 3 As Alias", 2)]
+        [InlineData("select Max(*)", 2)]
         [InlineData("select Max(Id)", 2)]
         [InlineData("select Max(Product.Id)", 2)]
         [InlineData("select Max(Product.Id) As ProductId", 2)]
