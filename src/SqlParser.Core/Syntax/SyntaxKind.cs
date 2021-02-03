@@ -2,7 +2,10 @@
 {
     public enum SyntaxKind
     {
+        None,
+
         // Tokens
+        BooleanToken,
         NumberToken,
         StringToken,
         PlusToken,
