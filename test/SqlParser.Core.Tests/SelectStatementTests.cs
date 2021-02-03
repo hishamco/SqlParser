@@ -18,6 +18,8 @@ namespace SqlParser.Tests
         [InlineData("select 1 + 3", 2)]
         [InlineData("select 1 + 3 As Alias", 2)]
         [InlineData("select Max(Id)", 2)]
+        [InlineData("select Max(Product.Id)", 2)]
+        [InlineData("select Max(Product.Id) As ProductId", 2)]
         public void ParseSelectClause(string text, int expectedNodesCount)
         {
             // Arrange
@@ -91,7 +93,7 @@ namespace SqlParser.Tests
         public void ParseFunctionInSelectClause()
         {
             // Arrange
-            var context = new SqlContext("Select Count(Id) As 'Total No', Sum(Mark)");
+            var context = new SqlContext("Select Count(Id) As 'Total No', Sum(Mark), Count(Products.Id) As Total");
             var result = new ParseResult<Statement>();
 
             // Act
@@ -119,6 +121,19 @@ namespace SqlParser.Tests
             Assert.Equal(SyntaxKind.IdentifierToken, selectClause.ChildNodes[3].ChildNodes[1].Token.Kind);
             Assert.Equal("Mark", selectClause.ChildNodes[3].ChildNodes[1].Token.Value);
             Assert.Equal(SyntaxKind.CloseParenthesisToken, selectClause.ChildNodes[3].ChildNodes[2].Token.Kind);
+            Assert.Equal(SyntaxKind.CommaToken, selectClause.ChildNodes[4].Token.Kind);
+            Assert.Equal("Count", selectClause.ChildNodes[5].Token.Value);
+            Assert.Equal(SyntaxKind.OpenParenthesisToken, selectClause.ChildNodes[5].ChildNodes[0].Token.Kind);
+            Assert.Equal(SyntaxKind.DotToken, selectClause.ChildNodes[5].ChildNodes[1].Token.Kind);
+            Assert.Equal(SyntaxKind.IdentifierToken, selectClause.ChildNodes[5].ChildNodes[1].ChildNodes[0].Token.Kind);
+            Assert.Equal("Products", selectClause.ChildNodes[5].ChildNodes[1].ChildNodes[0].Token.Value);
+            Assert.Equal(SyntaxKind.IdentifierToken, selectClause.ChildNodes[5].ChildNodes[1].ChildNodes[1].Token.Kind);
+            Assert.Equal("Id", selectClause.ChildNodes[5].ChildNodes[1].ChildNodes[1].Token.Value);
+            Assert.Equal(SyntaxKind.CloseParenthesisToken, selectClause.ChildNodes[5].ChildNodes[2].Token.Kind);
+            Assert.Equal(SyntaxKind.AsKeyword, selectClause.ChildNodes[5].ChildNodes[3].Token.Kind);
+            Assert.Equal(SyntaxKind.IdentifierToken, selectClause.ChildNodes[5].ChildNodes[4].Token.Kind);
+            Assert.Equal("Total", selectClause.ChildNodes[5].ChildNodes[4].Token.Value);
+
         }
 
         [Theory]
@@ -144,6 +159,7 @@ namespace SqlParser.Tests
 
         [Theory]
         [InlineData("Select FirstName As Name From People", new string[] { "Name" }, new string[] { })]
+        [InlineData("Select FirstName, LastName, GetFullName(FirstName, LastName) As FullName From People", new string[] { "FullName" }, new string[] { })]
         [InlineData("Select People.FirstName As Name From People", new string[] { "Name" }, new string[] { })]
         [InlineData("Select FirstName As 'First Name', LastName As 'Sure Name' From People", new string[] { "First Name", "Sure Name" }, new string[] { })]
         [InlineData("Select * From People As Persons", new string[] { }, new string[] { "Persons" })]
