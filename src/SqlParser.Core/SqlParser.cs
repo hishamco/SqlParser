@@ -147,13 +147,20 @@ namespace SqlParser.Core
             Grammar.Parser = Separated(SemiColon, statement);
         }
 
-        public IEnumerable<Statement> Parse(string commandText)
+        public SyntaxTree Parse(string commandText)
         {
             Grammar.TryParse(commandText, out List<Statement> statements);
 
-            return statements == null
-                ? Enumerable.Empty<Statement>()
-                : statements.Where(s => s != null);
+            var syntaxTree = new SyntaxTree();
+            if (statements != null)
+            {
+                foreach (var statement in statements.Where(s => s != null))
+                {
+                    syntaxTree.Statements.Add(statement);
+                }
+            }
+
+            return syntaxTree;
         }
     }
 }

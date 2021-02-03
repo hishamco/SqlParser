@@ -124,11 +124,11 @@ namespace SqlParser.Tests
             var parser = new Core.SqlParser();
 
             // Act
-            var statements = parser.Parse(commandText);
+            var syntaxTree = parser.Parse(commandText);
 
             // Assert
-            Assert.True(statements.Count() == statementsNo);
-            Assert.Equal(expectedStatmentType, statements.SingleOrDefault()?.GetType()?.Name ?? null);
+            Assert.True(syntaxTree.Statements.Count() == statementsNo);
+            Assert.Equal(expectedStatmentType, syntaxTree.Statements.SingleOrDefault()?.GetType()?.Name ?? null);
         }
 
         [Theory]
@@ -140,11 +140,11 @@ namespace SqlParser.Tests
             var parser = new Core.SqlParser();
 
             // Act
-            var statements = parser.Parse(commandText);
+            var syntaxTree = parser.Parse(commandText);
 
             // Assert
-            Assert.True(statements.Count() == statementsNo);
-            Assert.True(statements.All(s => s.GetType().Name == nameof(SelectStatement)));
+            Assert.True(syntaxTree.Statements.Count() == statementsNo);
+            Assert.True(syntaxTree.Statements.All(s => s.GetType().Name == nameof(SelectStatement)));
         }
     }
 }

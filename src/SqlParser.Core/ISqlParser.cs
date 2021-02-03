@@ -1,9 +1,9 @@
-﻿using System.Collections.Generic;
+﻿using SqlParser.Core.Syntax;
 
 namespace SqlParser.Core
 {
     public interface ISqlParser
     {
-        IEnumerable<Statement> Parse(string commandText);
+        SyntaxTree Parse(string commandText); 
     }
 }
