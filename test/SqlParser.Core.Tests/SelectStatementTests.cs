@@ -261,11 +261,11 @@ namespace SqlParser.Tests
             Assert.Equal(SyntaxKind.FromClause, fromClause.Token.Kind);
             Assert.Equal(SyntaxKind.FromKeyword, fromClause.ChildNodes[0].Token.Kind);
             Assert.Equal("FROM", fromClause.ChildNodes[0].Token.Value);
+            Assert.Equal(SyntaxKind.AsKeyword, fromClause.ChildNodes[1].Token.Kind);
             Assert.Equal(SyntaxKind.IdentifierToken, fromClause.ChildNodes[1].ChildNodes[0].Token.Kind);
             Assert.Equal("People", fromClause.ChildNodes[1].ChildNodes[0].Token.Value);
-            Assert.Equal(SyntaxKind.AsKeyword, fromClause.ChildNodes[1].ChildNodes[1].Token.Kind);
-            Assert.Equal(SyntaxKind.IdentifierToken, fromClause.ChildNodes[1].ChildNodes[2].Token.Kind);
-            Assert.Equal("Persons", fromClause.ChildNodes[1].ChildNodes[2].Token.Value);
+            Assert.Equal(SyntaxKind.IdentifierToken, fromClause.ChildNodes[1].ChildNodes[1].Token.Kind);
+            Assert.Equal("Persons", fromClause.ChildNodes[1].ChildNodes[1].Token.Value);
         }
     }
 }

@@ -255,41 +255,30 @@ namespace SqlParser.Core.Statements
                 })).And(alias)))
                 .Then(e =>
                 {
-                    var tableNode = new SyntaxNode(new SyntaxToken());
                     var tableName = e.Item1.Token.Value.ToString();
-
-                    tableNode.ChildNodes.Add(new SyntaxNode(new SyntaxToken
+                    var tableNode = new SyntaxNode(new SyntaxToken
                     {
                         Kind = SyntaxKind.IdentifierToken,
                         Value = tableName
-                    }));
+                    });
 
                     if (e.Item2.Item2 != null)
                     {
                         tableName = e.Item2.Item2.Token.Value.ToString();
+                        var prevTableNode = tableNode;
 
-                        tableNode.ChildNodes.Add(new SyntaxNode(new SyntaxToken
+                        tableNode = new SyntaxNode(new SyntaxToken
                         {
                             Kind = SyntaxKind.AsKeyword,
                             Value = e.Item2.Item1.Token.Value
-                        }));
+                        });
 
-                        if (e.Item2.Item2.Token.Kind == SyntaxKind.StringToken)
+                        tableNode.ChildNodes.Add(prevTableNode);
+                        tableNode.ChildNodes.Add(new SyntaxNode(new SyntaxToken
                         {
-                            tableNode.ChildNodes.Add(new SyntaxNode(new SyntaxToken
-                            {
-                                Kind = SyntaxKind.StringToken,
-                                Value = tableName
-                            }));
-                        }
-                        else
-                        {
-                            tableNode.ChildNodes.Add(new SyntaxNode(new SyntaxToken
-                            {
-                                Kind = SyntaxKind.IdentifierToken,
-                                Value = tableName
-                            }));
-                        }
+                            Kind = e.Item2.Item2.Token.Kind,
+                            Value = tableName
+                        }));
                     }
 
                     return tableNode;
@@ -403,11 +392,13 @@ namespace SqlParser.Core.Statements
                     {
                         var tableNames = e.Item6
                             .Where(n => n.Token.Kind != SyntaxKind.CommaToken)
-                            .Select(e => e.ChildNodes[0].Token.Value.ToString())
+                            .Select(e => e.Kind == SyntaxKind.AsKeyword
+                                ? e.ChildNodes[0].Token.Value.ToString()
+                                : e.Token.Value.ToString())
                             .ToList();
                         var tableAliases = e.Item6
-                            .Where(n => n.Token.Kind != SyntaxKind.CommaToken && n.ChildNodes.Any(c => c.Kind == SyntaxKind.AsKeyword))
-                            .Select(e => e.ChildNodes[e.ChildNodes.Count - 1].Token.Value.ToString())
+                            .Where(n => n.Token.Kind == SyntaxKind.AsKeyword)
+                            .Select(e => e.ChildNodes[1].Token.Value.ToString())
                             .ToList();
                         var columnNames = e.Item4
                             .Where(n => n.Token.Kind != SyntaxKind.CommaToken)
