@@ -82,9 +82,9 @@ namespace SqlParser.Tests
             Assert.Equal(SyntaxKind.NumberToken, selectClause.ChildNodes[3].Token.Kind);
             Assert.Equal(2M, selectClause.ChildNodes[3].Token.Value);
             Assert.Equal(SyntaxKind.CommaToken, selectClause.ChildNodes[4].Token.Kind);
-            Assert.Equal(SyntaxKind.NumberToken, selectClause.ChildNodes[5].Token.Kind);
-            Assert.Equal(3M, selectClause.ChildNodes[5].Token.Value);
-            Assert.Equal(SyntaxKind.AsKeyword, selectClause.ChildNodes[5].ChildNodes[0].Token.Kind);
+            Assert.Equal(SyntaxKind.AsKeyword, selectClause.ChildNodes[5].Token.Kind);
+            Assert.Equal(SyntaxKind.NumberToken, selectClause.ChildNodes[5].ChildNodes[0].Token.Kind);
+            Assert.Equal(3M, selectClause.ChildNodes[5].ChildNodes[0].Token.Value);
             Assert.Equal(SyntaxKind.StringToken, selectClause.ChildNodes[5].ChildNodes[1].Token.Kind);
             Assert.Equal("Alias", selectClause.ChildNodes[5].ChildNodes[1].Token.Value);
         }
@@ -105,15 +105,15 @@ namespace SqlParser.Tests
             Assert.Equal(SyntaxKind.SelectClause, selectClause.Token.Kind);
             Assert.Equal(SyntaxKind.SelectKeyword, selectClause.ChildNodes[0].Token.Kind);
             Assert.Equal("SELECT", selectClause.ChildNodes[0].Token.Value);
-            Assert.Equal(SyntaxKind.IdentifierToken, selectClause.ChildNodes[1].Token.Kind);
-            Assert.Equal("Count", selectClause.ChildNodes[1].Token.Value);
-            Assert.Equal(SyntaxKind.OpenParenthesisToken, selectClause.ChildNodes[1].ChildNodes[0].Token.Kind);
-            Assert.Equal(SyntaxKind.IdentifierToken, selectClause.ChildNodes[1].ChildNodes[1].Token.Kind);
-            Assert.Equal("Id", selectClause.ChildNodes[1].ChildNodes[1].Token.Value);
-            Assert.Equal(SyntaxKind.CloseParenthesisToken, selectClause.ChildNodes[1].ChildNodes[2].Token.Kind);
-            Assert.Equal(SyntaxKind.AsKeyword, selectClause.ChildNodes[1].ChildNodes[3].Token.Kind);
-            Assert.Equal(SyntaxKind.StringToken, selectClause.ChildNodes[1].ChildNodes[4].Token.Kind);
-            Assert.Equal("Total No", selectClause.ChildNodes[1].ChildNodes[4].Token.Value);
+            Assert.Equal(SyntaxKind.AsKeyword, selectClause.ChildNodes[1].Token.Kind);
+            Assert.Equal(SyntaxKind.IdentifierToken, selectClause.ChildNodes[1].ChildNodes[0].Token.Kind);
+            Assert.Equal("Count", selectClause.ChildNodes[1].ChildNodes[0].Token.Value);
+            Assert.Equal(SyntaxKind.OpenParenthesisToken, selectClause.ChildNodes[1].ChildNodes[0].ChildNodes[0].Token.Kind);
+            Assert.Equal(SyntaxKind.IdentifierToken, selectClause.ChildNodes[1].ChildNodes[0].ChildNodes[1].Token.Kind);
+            Assert.Equal("Id", selectClause.ChildNodes[1].ChildNodes[0].ChildNodes[1].Token.Value);
+            Assert.Equal(SyntaxKind.CloseParenthesisToken, selectClause.ChildNodes[1].ChildNodes[0].ChildNodes[2].Token.Kind);
+            Assert.Equal(SyntaxKind.StringToken, selectClause.ChildNodes[1].ChildNodes[1].Token.Kind);
+            Assert.Equal("Total No", selectClause.ChildNodes[1].ChildNodes[1].Token.Value);
             Assert.Equal(SyntaxKind.CommaToken, selectClause.ChildNodes[2].Token.Kind);
             Assert.Equal(SyntaxKind.IdentifierToken, selectClause.ChildNodes[3].Token.Kind);
             Assert.Equal("Sum", selectClause.ChildNodes[3].Token.Value);
@@ -122,17 +122,18 @@ namespace SqlParser.Tests
             Assert.Equal("Mark", selectClause.ChildNodes[3].ChildNodes[1].Token.Value);
             Assert.Equal(SyntaxKind.CloseParenthesisToken, selectClause.ChildNodes[3].ChildNodes[2].Token.Kind);
             Assert.Equal(SyntaxKind.CommaToken, selectClause.ChildNodes[4].Token.Kind);
-            Assert.Equal("Count", selectClause.ChildNodes[5].Token.Value);
-            Assert.Equal(SyntaxKind.OpenParenthesisToken, selectClause.ChildNodes[5].ChildNodes[0].Token.Kind);
-            Assert.Equal(SyntaxKind.DotToken, selectClause.ChildNodes[5].ChildNodes[1].Token.Kind);
-            Assert.Equal(SyntaxKind.IdentifierToken, selectClause.ChildNodes[5].ChildNodes[1].ChildNodes[0].Token.Kind);
-            Assert.Equal("Products", selectClause.ChildNodes[5].ChildNodes[1].ChildNodes[0].Token.Value);
-            Assert.Equal(SyntaxKind.IdentifierToken, selectClause.ChildNodes[5].ChildNodes[1].ChildNodes[1].Token.Kind);
-            Assert.Equal("Id", selectClause.ChildNodes[5].ChildNodes[1].ChildNodes[1].Token.Value);
-            Assert.Equal(SyntaxKind.CloseParenthesisToken, selectClause.ChildNodes[5].ChildNodes[2].Token.Kind);
-            Assert.Equal(SyntaxKind.AsKeyword, selectClause.ChildNodes[5].ChildNodes[3].Token.Kind);
-            Assert.Equal(SyntaxKind.IdentifierToken, selectClause.ChildNodes[5].ChildNodes[4].Token.Kind);
-            Assert.Equal("Total", selectClause.ChildNodes[5].ChildNodes[4].Token.Value);
+            Assert.Equal(SyntaxKind.AsKeyword, selectClause.ChildNodes[5].Token.Kind);
+            Assert.Equal(SyntaxKind.IdentifierToken, selectClause.ChildNodes[5].ChildNodes[0].Token.Kind);
+            Assert.Equal("Count", selectClause.ChildNodes[5].ChildNodes[0].Token.Value);
+            Assert.Equal(SyntaxKind.OpenParenthesisToken, selectClause.ChildNodes[5].ChildNodes[0].ChildNodes[0].Token.Kind);
+            Assert.Equal(SyntaxKind.DotToken, selectClause.ChildNodes[5].ChildNodes[0].ChildNodes[1].Token.Kind);
+            Assert.Equal(SyntaxKind.IdentifierToken, selectClause.ChildNodes[5].ChildNodes[0].ChildNodes[1].ChildNodes[0].Token.Kind);
+            Assert.Equal("Products", selectClause.ChildNodes[5].ChildNodes[0].ChildNodes[1].ChildNodes[0].Token.Value);
+            Assert.Equal(SyntaxKind.IdentifierToken, selectClause.ChildNodes[5].ChildNodes[0].ChildNodes[1].ChildNodes[1].Token.Kind);
+            Assert.Equal("Id", selectClause.ChildNodes[5].ChildNodes[0].ChildNodes[1].ChildNodes[1].Token.Value);
+            Assert.Equal(SyntaxKind.CloseParenthesisToken, selectClause.ChildNodes[5].ChildNodes[0].ChildNodes[2].Token.Kind);
+            Assert.Equal(SyntaxKind.IdentifierToken, selectClause.ChildNodes[5].ChildNodes[1].Token.Kind);
+            Assert.Equal("Total", selectClause.ChildNodes[5].ChildNodes[1].Token.Value);
 
         }
 

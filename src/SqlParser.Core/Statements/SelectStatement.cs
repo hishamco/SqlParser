@@ -223,11 +223,14 @@ namespace SqlParser.Core.Statements
                     var valueNode = e.Item1;
                     if (e.Item2.Item1 != null)
                     {
-                        valueNode.ChildNodes.Add(new SyntaxNode(new SyntaxToken
+                        var prevValueNode = valueNode;
+                        valueNode = new SyntaxNode(new SyntaxToken
                         {
                             Kind = SyntaxKind.AsKeyword,
                             Value = e.Item2.Item1
-                        }));
+                        });
+
+                        valueNode.ChildNodes.Add(prevValueNode);
                         valueNode.ChildNodes.Add(e.Item2.Item2);
                     }
 
