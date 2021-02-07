@@ -135,7 +135,28 @@ namespace SqlParser.Tests
             Assert.Equal(SyntaxKind.CloseParenthesisToken, selectClause.ChildNodes[5].ChildNodes[0].ChildNodes[2].Token.Kind);
             Assert.Equal(SyntaxKind.IdentifierToken, selectClause.ChildNodes[5].ChildNodes[1].Token.Kind);
             Assert.Equal("Total", selectClause.ChildNodes[5].ChildNodes[1].Token.Value);
+        }
 
+        [Theory]
+        [InlineData("Select 1 As Alias Order By Alias", 3)]
+        [InlineData("Select * From Products Order By Id", 3)]
+        [InlineData("Select * From Products Order By Products.Id", 3)]
+        [InlineData("Select * From Products Order By Id, Name", 5)]
+        [InlineData("Select * From Products Order By Id Desc", 3)]
+        [InlineData("Select * From Products Order By Products.Id Desc", 3)]
+        [InlineData("Select * From Products Order By Id, Name Desc", 5)]
+        public void ParseOrderByClause(string text, int expectedNodesCount)
+        {
+            // Arrange
+            var context = new SqlContext(text);
+            var result = new ParseResult<Statement>();
+
+            // Act
+            SelectStatement.Statement.Parse(context, ref result);
+
+            // Assert
+            var statement = result.Value as SelectStatement;
+            Assert.Equal(expectedNodesCount, statement.Nodes.Last().ChildNodes.Count);
         }
 
         [Theory]
@@ -224,7 +245,7 @@ namespace SqlParser.Tests
         public void GetSelectStatementNodesInfo()
         {
             // Arrange
-            var sql = "Select Distinct Top(3) Persons.FirstName, LastName As 'Sure Name' From People As Persons";
+            var sql = "Select Distinct Top(3) Persons.FirstName, LastName As 'Sure Name' From People As Persons Order By People.Id";
             var context = new SqlContext(sql);
             var result = new ParseResult<Statement>();
 
@@ -233,7 +254,7 @@ namespace SqlParser.Tests
 
             // Assert
             var statement = result.Value as SelectStatement;
-            Assert.Equal(2, statement.Nodes.Count());
+            Assert.Equal(3, statement.Nodes.Count());
 
             var selectClause = statement.Nodes[0];
             Assert.Equal(SyntaxKind.SelectClause, selectClause.Token.Kind);
@@ -268,6 +289,17 @@ namespace SqlParser.Tests
             Assert.Equal("People", fromClause.ChildNodes[1].ChildNodes[0].Token.Value);
             Assert.Equal(SyntaxKind.IdentifierToken, fromClause.ChildNodes[1].ChildNodes[1].Token.Kind);
             Assert.Equal("Persons", fromClause.ChildNodes[1].ChildNodes[1].Token.Value);
+
+            var orderByClause = statement.Nodes[2];
+            Assert.Equal(SyntaxKind.OrderByClause, orderByClause.Token.Kind);
+            Assert.Equal(SyntaxKind.OrderByKeyword, orderByClause.ChildNodes[0].Token.Kind);
+            Assert.Equal("ORDER BY", orderByClause.ChildNodes[0].Token.Value);
+            Assert.Equal(SyntaxKind.DotToken, orderByClause.ChildNodes[1].Token.Kind);
+            Assert.Equal(SyntaxKind.IdentifierToken, orderByClause.ChildNodes[1].ChildNodes[0].Token.Kind);
+            Assert.Equal("People", orderByClause.ChildNodes[1].ChildNodes[0].Token.Value);
+            Assert.Equal(SyntaxKind.IdentifierToken, orderByClause.ChildNodes[1].ChildNodes[1].Token.Kind);
+            Assert.Equal("Id", orderByClause.ChildNodes[1].ChildNodes[1].Token.Value);
+            Assert.Equal(SyntaxKind.AscendingKeyword, orderByClause.ChildNodes[2].Token.Kind);
         }
     }
 }

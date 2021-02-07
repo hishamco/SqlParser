@@ -31,6 +31,9 @@
         ValuesKeyword,
         SelectKeyword,
         AsKeyword,
+        OrderByKeyword,
+        AscendingKeyword,
+        DescendingKeyword,
         UpdateKeyword,
         SetKeyword,
         DistinctKeyword,
@@ -42,6 +45,7 @@
         InsertIntoClause,
         ValuesClause,
         SelectClause,
+        OrderByClause,
         UpdateClause,
         SetClause,
 
