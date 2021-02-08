@@ -138,10 +138,10 @@ namespace SqlParser.Tests
         }
 
         [Theory]
-        [InlineData("Select 1 As Alias Order By Alias", 3)]
-        [InlineData("Select * From Products Order By Id", 3)]
-        [InlineData("Select * From Products Order By Products.Id", 3)]
-        [InlineData("Select * From Products Order By Id, Name", 5)]
+        [InlineData("Select 1 As Alias Order By Alias", 2)]
+        [InlineData("Select * From Products Order By Id", 2)]
+        [InlineData("Select * From Products Order By Products.Id", 2)]
+        [InlineData("Select * From Products Order By Id, Name", 4)]
         [InlineData("Select * From Products Order By Id Desc", 3)]
         [InlineData("Select * From Products Order By Products.Id Desc", 3)]
         [InlineData("Select * From Products Order By Id, Name Desc", 5)]
@@ -245,7 +245,7 @@ namespace SqlParser.Tests
         public void GetSelectStatementNodesInfo()
         {
             // Arrange
-            var sql = "Select Distinct Top(3) Persons.FirstName, LastName As 'Sure Name' From People As Persons Order By People.Id";
+            var sql = "Select Distinct Top(3) Persons.FirstName, LastName As 'Sure Name' From People As Persons Order By People.Id Desc";
             var context = new SqlContext(sql);
             var result = new ParseResult<Statement>();
 
@@ -299,7 +299,8 @@ namespace SqlParser.Tests
             Assert.Equal("People", orderByClause.ChildNodes[1].ChildNodes[0].Token.Value);
             Assert.Equal(SyntaxKind.IdentifierToken, orderByClause.ChildNodes[1].ChildNodes[1].Token.Kind);
             Assert.Equal("Id", orderByClause.ChildNodes[1].ChildNodes[1].Token.Value);
-            Assert.Equal(SyntaxKind.AscendingKeyword, orderByClause.ChildNodes[2].Token.Kind);
+            Assert.Equal(SyntaxKind.DescendingKeyword, orderByClause.ChildNodes[2].Token.Kind);
+            Assert.Equal("DESC", orderByClause.ChildNodes[2].Token.Value);
         }
     }
 }
