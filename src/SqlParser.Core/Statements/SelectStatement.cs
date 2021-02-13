@@ -389,7 +389,15 @@ namespace SqlParser.Core.Statements
                     },
                     Value = e
                 }));
-            var comparisonExpression = expression.And(comparisonOperator).And(expression);
+            var comparisonExpression = expression.And(comparisonOperator).And(expression)
+                .Then(e =>
+                {
+                    var node = e.Item2;
+                    node.ChildNodes.Add(e.Item1);
+                    node.ChildNodes.Add(e.Item3);
+
+                    return node;
+                });
             var whereClause = Where
                 .Then(e => new SyntaxNode(new SyntaxToken
                 {
@@ -401,9 +409,7 @@ namespace SqlParser.Core.Statements
                     var clause = new SyntaxNode(new SyntaxToken { Kind = SyntaxKind.WhereClause });
 
                     clause.ChildNodes.Add(e.Item1);
-                    clause.ChildNodes.Add(e.Item2.Item2);
-                    clause.ChildNodes[1].ChildNodes.Add(e.Item2.Item1);
-                    clause.ChildNodes[1].ChildNodes.Add(e.Item2.Item3);
+                    clause.ChildNodes.Add(e.Item2);
 
                     return clause;
                 });
