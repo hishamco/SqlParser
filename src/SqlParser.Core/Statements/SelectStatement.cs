@@ -7,7 +7,7 @@ using static Parlot.Fluent.Parsers;
 namespace SqlParser.Core.Statements
 {
     /*
-     * selectStatement ::= SELECT DISTINCT? topExpression? columnsList FROM tableNames | SELECT valuesList
+     * selectStatement ::= SELECT DISTINCT? topExpression? columnsList FROM tableNames (orderByClause)? | SELECT valuesList (orderByClause)?
      * 
      * topExpression ::= TOP(number)
      *
@@ -31,7 +31,7 @@ namespace SqlParser.Core.Statements
      * 
      * alias ::= identifier | string
      * 
-     * orderClause ::= ORDER BY columnName (, columnName)* (ASC | DESC)
+     * orderByClause ::= ORDER BY columnName (, columnName)* (ASC | DESC)
      */
     public class SelectStatement : Statement
     {
@@ -417,12 +417,7 @@ namespace SqlParser.Core.Statements
                         {
                             Kind = SyntaxKind.DescendingKeyword,
                             Value = e
-                        }))))
-                .Then(e => e ?? new SyntaxNode(new SyntaxToken
-                {
-                    Kind = SyntaxKind.AscendingKeyword,
-                    Value = e
-                })));
+                        })))));
             var selectStatement = selectAndFromClauses
                 .Or(selectClause
                     .Then(e => (e.Item1, (SyntaxNode)null, (List<SyntaxNode>)null, e.Item2, (SyntaxNode)null, (List<SyntaxNode>)null)))
@@ -458,13 +453,14 @@ namespace SqlParser.Core.Statements
 
                     selectClause.ChildNodes.Add(e.Item1);
 
-
                     foreach (var node in e.Item4)
                     {
                         selectClause.ChildNodes.Add(node);
                     }
 
                     statement.Nodes.Add(selectClause);
+
+                    TryParseOrderBy(statement, e.Item7);
 
                     if (e.Item7.Item1 != null)
                     {
@@ -475,7 +471,11 @@ namespace SqlParser.Core.Statements
                             orderByClause.ChildNodes.Add(node);
                         }
 
-                        orderByClause.ChildNodes.Add(e.Item7.Item3);
+                        if (e.Item7.Item3 != null)
+                        {
+                            orderByClause.ChildNodes.Add(e.Item7.Item3);
+                        }
+
                         statement.Nodes.Add(orderByClause);
                     }
 
@@ -542,7 +542,6 @@ namespace SqlParser.Core.Statements
                     };
                     var selectClause = new SyntaxNode(new SyntaxToken { Kind = SyntaxKind.SelectClause });
                     var fromClause = new SyntaxNode(new SyntaxToken { Kind = SyntaxKind.FromClause });
-                    var orderByClause = new SyntaxNode(new SyntaxToken { Kind = SyntaxKind.OrderByClause });
 
                     selectClause.ChildNodes.Add(e.Item1);
 
@@ -574,20 +573,30 @@ namespace SqlParser.Core.Statements
                     statement.Nodes.Add(selectClause);
                     statement.Nodes.Add(fromClause);
 
-                    if (e.Item7.Item1 != null)
-                    {
-                        orderByClause.ChildNodes.Add(e.Item7.Item1);
+                    TryParseOrderBy(statement, e.Item7);
 
-                        foreach (var node in e.Item7.Item2)
+                    return statement;
+                }
+
+                void TryParseOrderBy(SelectStatement statement, (SyntaxNode, List<SyntaxNode>, SyntaxNode) orderByNode)
+                {
+                    var orderByClause = new SyntaxNode(new SyntaxToken { Kind = SyntaxKind.OrderByClause });
+                    if (orderByNode.Item1 != null)
+                    {
+                        orderByClause.ChildNodes.Add(orderByNode.Item1);
+
+                        foreach (var node in orderByNode.Item2)
                         {
                             orderByClause.ChildNodes.Add(node);
                         }
 
-                        orderByClause.ChildNodes.Add(e.Item7.Item3);
+                        if (e.Item7.Item3 != null)
+                        {
+                            orderByClause.ChildNodes.Add(orderByNode.Item3);
+                        }
+
                         statement.Nodes.Add(orderByClause);
                     }
-
-                    return statement;
                 }
             });
         }
