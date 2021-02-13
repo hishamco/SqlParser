@@ -138,6 +138,39 @@ namespace SqlParser.Tests
         }
 
         [Theory]
+        [InlineData("Select * From Products Where Id=5")]
+        [InlineData("Select * From Products Where Id = 5")]
+        [InlineData("Select * From Products Where Id <> 5")]
+        [InlineData("Select * From Products Where Id != 5")]
+        [InlineData("Select * From Products Where Id < 5")]
+        [InlineData("Select * From Products Where Id > 5")]
+        [InlineData("Select * From Products Where Id <= 5")]
+        [InlineData("Select * From Products Where Id >= 5")]
+        [InlineData("Select * From Products Where Id=5 Order By Id")]
+        [InlineData("Select * From Products Where Id = 5 Order By Id")]
+        [InlineData("Select * From Products Where Id <> 5 Order By Id")]
+        [InlineData("Select * From Products Where Id != 5 Order By Id")]
+        [InlineData("Select * From Products Where Id < 5 Order By Id")]
+        [InlineData("Select * From Products Where Id > 5 Order By Id")]
+        [InlineData("Select * From Products Where Id <= 5 Order By Id")]
+        [InlineData("Select * From Products Where Id >= 5 Order By Id")]
+        public void ParseWhereByClause(string text)
+        {
+            // Arrange
+            var context = new SqlContext(text);
+            var result = new ParseResult<Statement>();
+
+            // Act
+            SelectStatement.Statement.Parse(context, ref result);
+
+            // Assert
+            var statement = result.Value as SelectStatement;
+            var whereNode = statement.Nodes.Single(n => n.Kind == SyntaxKind.WhereClause);
+            Assert.Equal(2, whereNode.ChildNodes.Count);
+            Assert.Equal(2, whereNode.ChildNodes[1].ChildNodes.Count);
+        }
+
+        [Theory]
         [InlineData("Select 1 As Alias Order By Alias", 2)]
         [InlineData("Select * From Products Order By Id", 2)]
         [InlineData("Select * From Products Order By Products.Id", 2)]
@@ -245,7 +278,7 @@ namespace SqlParser.Tests
         public void GetSelectStatementNodesInfo()
         {
             // Arrange
-            var sql = "Select Distinct Top(3) Persons.FirstName, LastName As 'Sure Name' From People As Persons Order By People.Id Desc";
+            var sql = "Select Distinct Top(3) Persons.FirstName, LastName As 'Sure Name' From People As Persons Where Id >= 6 Order By People.Id Desc";
             var context = new SqlContext(sql);
             var result = new ParseResult<Statement>();
 
@@ -254,7 +287,7 @@ namespace SqlParser.Tests
 
             // Assert
             var statement = result.Value as SelectStatement;
-            Assert.Equal(3, statement.Nodes.Count());
+            Assert.Equal(4, statement.Nodes.Count());
 
             var selectClause = statement.Nodes[0];
             Assert.Equal(SyntaxKind.SelectClause, selectClause.Token.Kind);
@@ -290,7 +323,17 @@ namespace SqlParser.Tests
             Assert.Equal(SyntaxKind.IdentifierToken, fromClause.ChildNodes[1].ChildNodes[1].Token.Kind);
             Assert.Equal("Persons", fromClause.ChildNodes[1].ChildNodes[1].Token.Value);
 
-            var orderByClause = statement.Nodes[2];
+            var whereClause = statement.Nodes[2];
+            Assert.Equal(SyntaxKind.WhereClause, whereClause.Token.Kind);
+            Assert.Equal(SyntaxKind.WhereKeyword, whereClause.ChildNodes[0].Token.Kind);
+            Assert.Equal("WHERE", whereClause.ChildNodes[0].Token.Value);
+            Assert.Equal(SyntaxKind.GreaterOrEqualsToken, whereClause.ChildNodes[1].Token.Kind);
+            Assert.Equal(SyntaxKind.IdentifierToken, whereClause.ChildNodes[1].ChildNodes[0].Token.Kind);
+            Assert.Equal("Id", whereClause.ChildNodes[1].ChildNodes[0].Token.Value);
+            Assert.Equal(SyntaxKind.NumberToken, whereClause.ChildNodes[1].ChildNodes[1].Token.Kind);
+            Assert.Equal(6M, whereClause.ChildNodes[1].ChildNodes[1].Token.Value);
+
+            var orderByClause = statement.Nodes[3];
             Assert.Equal(SyntaxKind.OrderByClause, orderByClause.Token.Kind);
             Assert.Equal(SyntaxKind.OrderByKeyword, orderByClause.ChildNodes[0].Token.Kind);
             Assert.Equal("ORDER BY", orderByClause.ChildNodes[0].Token.Value);

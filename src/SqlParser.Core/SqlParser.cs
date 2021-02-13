@@ -38,6 +38,13 @@ namespace SqlParser.Core
         internal protected static readonly Parser<char> Divided = Terms.Char('/');
         internal protected static readonly Parser<char> Modulo = Terms.Char('%');
 
+        internal protected static readonly Parser<string> Equal = Terms.Text("=");
+        internal protected static readonly Parser<string> NotEqual = Terms.Text("!=").Or(Terms.Text("<>"));
+        internal protected static readonly Parser<string> LessThan = Terms.Text("<");
+        internal protected static readonly Parser<string> GreaterThan = Terms.Text(">");
+        internal protected static readonly Parser<string> LessThanOrEqual = Terms.Text("<=");
+        internal protected static readonly Parser<string> GreaterThanOrEqual = Terms.Text(">=");
+
         internal protected static readonly Parser<char> OpenParen = Terms.Char('(');
         internal protected static readonly Parser<char> CloseParen = Terms.Char(')');
         internal protected static readonly Parser<char> Comma = Terms.Char(',');

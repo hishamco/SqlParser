@@ -7,7 +7,7 @@ using static Parlot.Fluent.Parsers;
 namespace SqlParser.Core.Statements
 {
     /*
-     * selectStatement ::= SELECT DISTINCT? topExpression? columnsList FROM tableNames (orderByClause)? | SELECT valuesList (orderByClause)?
+     * selectStatement ::= SELECT DISTINCT? topExpression? columnsList FROM tableNames (whereClause)? (orderByClause)? | SELECT valuesList (whereClause)? (orderByClause)?
      * 
      * topExpression ::= TOP(number)
      *
@@ -31,6 +31,12 @@ namespace SqlParser.Core.Statements
      * 
      * alias ::= identifier | string
      * 
+     * whereClause ::= comparisonExpression
+     * 
+     * comparisonExpression ::= expression = expression | expression <> expression | expression != expression
+     * 
+     *                          expression < expression | expression > expression | expression <= expression | expression >= expression
+     * 
      * orderByClause ::= ORDER BY columnName (, columnName)* (ASC | DESC)
      */
     public class SelectStatement : Statement
@@ -40,6 +46,7 @@ namespace SqlParser.Core.Statements
         internal protected static readonly Parser<string> Top = Terms.Text("TOP", caseInsensitive: true);
         internal protected static readonly Parser<string> From = Terms.Text("FROM", caseInsensitive: true);
         internal protected static readonly Parser<string> As = Terms.Text("AS", caseInsensitive: true);
+        internal protected static readonly Parser<string> Where = Terms.Text("WHERE", caseInsensitive: true);
         internal protected static readonly Parser<string> OrderBy = Terms.Text("ORDER BY", caseInsensitive: true);
         internal protected static readonly Parser<string> Ascending = Terms.Text("ASC", caseInsensitive: true);
         internal protected static readonly Parser<string> Descending = Terms.Text("DESC", caseInsensitive: true);
@@ -364,6 +371,42 @@ namespace SqlParser.Core.Statements
                     Kind = SyntaxKind.SelectKeyword,
                     Value = e
                 })).And(valuesList);
+            var comparisonOperator = SqlParser.Equal.Or(SqlParser.NotEqual)
+                .Or(SqlParser.LessThanOrEqual).Or(SqlParser.GreaterThanOrEqual)
+                .Or(SqlParser.LessThan).Or(SqlParser.GreaterThan)
+                .Then(e => new SyntaxNode(new SyntaxToken
+                {
+                    Kind = e switch
+                    {
+                        "=" => SyntaxKind.EqualsToken,
+                        "<>" => SyntaxKind.NotEqualsToken,
+                        "!=" => SyntaxKind.NotEqualsToken,
+                        "<" => SyntaxKind.LessToken,
+                        ">" => SyntaxKind.GreaterToken,
+                        "<=" => SyntaxKind.LessOrEqualsToken,
+                        ">=" => SyntaxKind.GreaterOrEqualsToken,
+                        _ => SyntaxKind.None
+                    },
+                    Value = e
+                }));
+            var comparisonExpression = expression.And(comparisonOperator).And(expression);
+            var whereClause = Where
+                .Then(e => new SyntaxNode(new SyntaxToken
+                {
+                    Kind = SyntaxKind.WhereKeyword,
+                    Value = e
+                })).And(comparisonExpression)
+                .Then(e =>
+                {
+                    var clause = new SyntaxNode(new SyntaxToken { Kind = SyntaxKind.WhereClause });
+
+                    clause.ChildNodes.Add(e.Item1);
+                    clause.ChildNodes.Add(e.Item2.Item2);
+                    clause.ChildNodes[1].ChildNodes.Add(e.Item2.Item1);
+                    clause.ChildNodes[1].ChildNodes.Add(e.Item2.Item3);
+
+                    return clause;
+                });
             var orderByColumn = ZeroOrOne(identifier.And(SqlParser.Dot
                     .Then(e => new SyntaxNode(new SyntaxToken
                     { 
@@ -417,11 +460,30 @@ namespace SqlParser.Core.Statements
                         {
                             Kind = SyntaxKind.DescendingKeyword,
                             Value = e
-                        })))));
+                        })))))
+                .Then(e =>
+                {
+                    var clause = new SyntaxNode(new SyntaxToken { Kind = SyntaxKind.OrderByClause });
+                    
+                    clause.ChildNodes.Add(e.Item1);
+
+                    foreach (var node in e.Item2)
+                    {
+                        clause.ChildNodes.Add(node);
+                    }
+
+                    if (e.Item3 != null)
+                    {
+                        clause.ChildNodes.Add(e.Item3);
+                    }
+
+                    return clause;
+                });
             var selectStatement = selectAndFromClauses
                 .Or(selectClause
                     .Then(e => (e.Item1, (SyntaxNode)null, (List<SyntaxNode>)null, e.Item2, (SyntaxNode)null, (List<SyntaxNode>)null)))
-                .And(ZeroOrOne(orderByClause));
+                .And(ZeroOrOne(whereClause.And(ZeroOrOne(orderByClause))
+                    .Or(orderByClause.Then(e => ((SyntaxNode)null, e)))));
 
             Statement.Parser = selectStatement.Then<Statement>(e =>
             {
@@ -460,24 +522,7 @@ namespace SqlParser.Core.Statements
 
                     statement.Nodes.Add(selectClause);
 
-                    TryParseOrderBy(statement, e.Item7);
-
-                    if (e.Item7.Item1 != null)
-                    {
-                        orderByClause.ChildNodes.Add(e.Item7.Item1);
-
-                        foreach (var node in e.Item7.Item2)
-                        {
-                            orderByClause.ChildNodes.Add(node);
-                        }
-
-                        if (e.Item7.Item3 != null)
-                        {
-                            orderByClause.ChildNodes.Add(e.Item7.Item3);
-                        }
-
-                        statement.Nodes.Add(orderByClause);
-                    }
+                    TryAddWhereAndOrderByClauses(statement, e.Item7);
 
                     return statement;
                 }
@@ -573,29 +618,21 @@ namespace SqlParser.Core.Statements
                     statement.Nodes.Add(selectClause);
                     statement.Nodes.Add(fromClause);
 
-                    TryParseOrderBy(statement, e.Item7);
+                    TryAddWhereAndOrderByClauses(statement, e.Item7);
 
                     return statement;
                 }
 
-                void TryParseOrderBy(SelectStatement statement, (SyntaxNode, List<SyntaxNode>, SyntaxNode) orderByNode)
+                void TryAddWhereAndOrderByClauses(SelectStatement statement, (SyntaxNode, SyntaxNode) whereAndOrderByNodes)
                 {
-                    var orderByClause = new SyntaxNode(new SyntaxToken { Kind = SyntaxKind.OrderByClause });
-                    if (orderByNode.Item1 != null)
+                    if (e.Item7.Item1 != null)
                     {
-                        orderByClause.ChildNodes.Add(orderByNode.Item1);
+                        statement.Nodes.Add(e.Item7.Item1);
+                    }
 
-                        foreach (var node in orderByNode.Item2)
-                        {
-                            orderByClause.ChildNodes.Add(node);
-                        }
-
-                        if (e.Item7.Item3 != null)
-                        {
-                            orderByClause.ChildNodes.Add(orderByNode.Item3);
-                        }
-
-                        statement.Nodes.Add(orderByClause);
+                    if (e.Item7.Item2 != null)
+                    {
+                        statement.Nodes.Add(e.Item7.Item2);
                     }
                 }
             });

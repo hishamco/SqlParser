@@ -13,8 +13,12 @@
         TimesToken,
         DivideToken,
         ModuloToken,
-        StarToken,
         EqualsToken,
+        NotEqualsToken,
+        LessToken,
+        LessOrEqualsToken,
+        GreaterToken,
+        GreaterOrEqualsToken,
         OpenParenthesisToken,
         CloseParenthesisToken,
         ColonToken,
@@ -38,6 +42,7 @@
         SetKeyword,
         DistinctKeyword,
         TopKeyword,
+        WhereKeyword,
 
         // Clauses
         DeleteClause,
@@ -48,6 +53,7 @@
         OrderByClause,
         UpdateClause,
         SetClause,
+        WhereClause,
 
         // Statements
         DeleteStatement,
