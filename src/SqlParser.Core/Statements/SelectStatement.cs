@@ -1,5 +1,6 @@
 ﻿using Parlot.Fluent;
 using SqlParser.Core.Syntax;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using static Parlot.Fluent.Parsers;
@@ -31,11 +32,13 @@ namespace SqlParser.Core.Statements
      * 
      * alias ::= identifier | string
      * 
-     * whereClause ::= comparisonExpression
+     * whereClause ::= WHERE (comparisonExpression | logicalExpression)
+     * 
+     * logicalExpression ::= comparisonExpression AND comparisonExpression | comparisonExpression OR comparisonExpression | NOT comparisonExpression
      * 
      * comparisonExpression ::= expression = expression | expression <> expression | expression != expression
      * 
-     *                          expression < expression | expression > expression | expression <= expression | expression >= expression
+     *                          expression < expression | expression > expression | expression <= expression | expression >= expression | boolean
      * 
      * orderByClause ::= ORDER BY columnName (, columnName)* (ASC | DESC)
      */
@@ -50,6 +53,9 @@ namespace SqlParser.Core.Statements
         internal protected static readonly Parser<string> OrderBy = Terms.Text("ORDER BY", caseInsensitive: true);
         internal protected static readonly Parser<string> Ascending = Terms.Text("ASC", caseInsensitive: true);
         internal protected static readonly Parser<string> Descending = Terms.Text("DESC", caseInsensitive: true);
+        internal protected static readonly Parser<string> And = Terms.Text("AND", caseInsensitive: true);
+        internal protected static readonly Parser<string> Or = Terms.Text("OR", caseInsensitive: true);
+        internal protected static readonly Parser<string> Not = Terms.Text("NOT", caseInsensitive: true);
 
         public static readonly Deferred<Statement> Statement = Deferred<Statement>();
 
@@ -60,6 +66,12 @@ namespace SqlParser.Core.Statements
                {
                    Kind = SyntaxKind.NumberToken,
                    Value = e
+               }));
+            var boolean = SqlParser.Boolean
+               .Then(e => new SyntaxNode(new SyntaxToken
+               {
+                   Kind = SyntaxKind.BooleanToken,
+                   Value = Convert.ToBoolean(e)
                }));
             var identifier = SqlParser.Identifier
                 .Then(e => new SyntaxNode(new SyntaxToken
@@ -397,13 +409,66 @@ namespace SqlParser.Core.Statements
                     node.ChildNodes.Add(e.Item3);
 
                     return node;
+                }).Or(boolean);
+            var logicalOperator = And.Or(Or).Or(Not)
+                .Then(e => new SyntaxNode(new SyntaxToken
+                {
+                    Kind = e switch
+                    {
+                        "AND" => SyntaxKind.AndToken,
+                        "OR" => SyntaxKind.OrToken,
+                        _ => SyntaxKind.None
+                    },
+                    Value = e
+                }));
+            var logicalExpression = ZeroOrOne(Not
+                    .Then(e => new SyntaxNode(new SyntaxToken
+                    {
+                        Kind = SyntaxKind.NotToken,
+                        Value = e
+                    }))).And(comparisonExpression
+                .And(ZeroOrMany(logicalOperator.And(comparisonExpression)))
+                .Then(e =>
+                {
+                    var node = e.Item1;
+                    if (e.Item2.Count == 1)
+                    {
+                        var prevNode = node;
+                        node = e.Item2[0].Item1;
+                        node.ChildNodes.Add(prevNode);
+                        node.ChildNodes.Add(e.Item2[0].Item2);
+                    }
+                    else
+                    {
+                        for (int i = 1; i < e.Item2.Count; i += 2)
+                        {
+                            var prevNode = node;
+                            node = e.Item2[i].Item1;
+                            node.ChildNodes.Add(prevNode);
+                            node.ChildNodes.Add(e.Item2[i].Item2);
+                        }
+                    }
+
+                    return node;
+                }))
+                .Then(e =>
+                {
+                    var node = e.Item2;
+                    if (e.Item1 != null)
+                    {
+                        var prevNode = node;
+                        node = e.Item1;
+                        node.ChildNodes.Add(prevNode);
+                    }
+
+                    return node;
                 });
             var whereClause = Where
                 .Then(e => new SyntaxNode(new SyntaxToken
                 {
                     Kind = SyntaxKind.WhereKeyword,
                     Value = e
-                })).And(comparisonExpression)
+                })).And(logicalExpression)
                 .Then(e =>
                 {
                     var clause = new SyntaxNode(new SyntaxToken { Kind = SyntaxKind.WhereClause });
