@@ -138,6 +138,7 @@ namespace SqlParser.Tests
         }
 
         [Theory]
+        [InlineData("Select * From Products Where Id")]
         [InlineData("Select * From Products Where Id=5")]
         [InlineData("Select * From Products Where Id = 5")]
         [InlineData("Select * From Products Where Id <> 5")]

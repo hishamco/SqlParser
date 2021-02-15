@@ -67,12 +67,6 @@ namespace SqlParser.Core.Statements
                    Kind = SyntaxKind.NumberToken,
                    Value = e
                }));
-            var boolean = SqlParser.Boolean
-               .Then(e => new SyntaxNode(new SyntaxToken
-               {
-                   Kind = SyntaxKind.BooleanToken,
-                   Value = Convert.ToBoolean(e)
-               }));
             var identifier = SqlParser.Identifier
                 .Then(e => new SyntaxNode(new SyntaxToken
                 {
@@ -409,8 +403,8 @@ namespace SqlParser.Core.Statements
                     node.ChildNodes.Add(e.Item3);
 
                     return node;
-                }).Or(boolean);
-            var logicalOperator = And.Or(Or).Or(Not)
+                }).Or(expression);
+            var logicalOperator = And.Or(OrderBy.SkipAnd(Or)).Or(Not)
                 .Then(e => new SyntaxNode(new SyntaxToken
                 {
                     Kind = e switch
