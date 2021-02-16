@@ -151,6 +151,7 @@ namespace SqlParser.Tests
         [InlineData("Select * From Products Where Id >= 5 And Id < 10")]
         [InlineData("Select * From Products Where Id >= 5 Or Id < 10")]
         [InlineData("Select * From Products Where Not Id >= 5 Or Id < 10")]
+        [InlineData("Select * From Products Where Products.Id = 5")]
         [InlineData("Select * From Products Where True")]
         [InlineData("Select * From Products Where False")]
         [InlineData("Select * From Products Where Id=5 Order By Id")]
@@ -284,7 +285,7 @@ namespace SqlParser.Tests
         public void GetSelectStatementNodesInfo()
         {
             // Arrange
-            var sql = "Select Distinct Top(3) Persons.FirstName, LastName As 'Sure Name' From People As Persons Where Id >= 6 And Id < 22 Order By People.Id Desc";
+            var sql = "Select Distinct Top(3) Persons.FirstName, LastName As 'Sure Name' From People As Persons Where Id >= 6 And Persons.Id < 22 Order By People.Id Desc";
             var context = new SqlContext(sql);
             var result = new ParseResult<Statement>();
 
@@ -340,8 +341,11 @@ namespace SqlParser.Tests
             Assert.Equal(SyntaxKind.NumberToken, whereClause.ChildNodes[1].ChildNodes[0].ChildNodes[1].Token.Kind);
             Assert.Equal(6M, whereClause.ChildNodes[1].ChildNodes[0].ChildNodes[1].Token.Value);
             Assert.Equal(SyntaxKind.LessToken, whereClause.ChildNodes[1].ChildNodes[1].Token.Kind);
-            Assert.Equal(SyntaxKind.IdentifierToken, whereClause.ChildNodes[1].ChildNodes[1].ChildNodes[0].Token.Kind);
-            Assert.Equal("Id", whereClause.ChildNodes[1].ChildNodes[1].ChildNodes[0].Token.Value);
+            Assert.Equal(SyntaxKind.DotToken, whereClause.ChildNodes[1].ChildNodes[1].ChildNodes[0].Token.Kind);
+            Assert.Equal(SyntaxKind.IdentifierToken, whereClause.ChildNodes[1].ChildNodes[1].ChildNodes[0].ChildNodes[0].Token.Kind);
+            Assert.Equal("Persons", whereClause.ChildNodes[1].ChildNodes[1].ChildNodes[0].ChildNodes[0].Token.Value);
+            Assert.Equal(SyntaxKind.IdentifierToken, whereClause.ChildNodes[1].ChildNodes[1].ChildNodes[0].ChildNodes[1].Token.Kind);
+            Assert.Equal("Id", whereClause.ChildNodes[1].ChildNodes[1].ChildNodes[0].ChildNodes[1].Token.Value);
             Assert.Equal(SyntaxKind.NumberToken, whereClause.ChildNodes[1].ChildNodes[1].ChildNodes[1].Token.Kind);
             Assert.Equal(22M, whereClause.ChildNodes[1].ChildNodes[1].ChildNodes[1].Token.Value);
 

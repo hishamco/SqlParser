@@ -377,6 +377,20 @@ namespace SqlParser.Core.Statements
                     Kind = SyntaxKind.SelectKeyword,
                     Value = e
                 })).And(valuesList);
+            var columnOrValue = identifier.And(SqlParser.Dot).And(identifier).
+                Then(e =>
+                {
+                    var node = new SyntaxNode(new SyntaxToken
+                    {
+                        Kind = SyntaxKind.DotToken,
+                        Value = e.Item2
+                    });
+
+                    node.ChildNodes.Add(e.Item1);
+                    node.ChildNodes.Add(e.Item3);
+
+                    return node;
+                }).Or(expression);
             var comparisonOperator = SqlParser.Equal.Or(SqlParser.NotEqual)
                 .Or(SqlParser.LessThanOrEqual).Or(SqlParser.GreaterThanOrEqual)
                 .Or(SqlParser.LessThan).Or(SqlParser.GreaterThan)
@@ -395,7 +409,7 @@ namespace SqlParser.Core.Statements
                     },
                     Value = e
                 }));
-            var comparisonExpression = expression.And(comparisonOperator).And(expression)
+            var comparisonExpression = columnOrValue.And(comparisonOperator).And(columnOrValue)
                 .Then(e =>
                 {
                     var node = e.Item2;
@@ -403,7 +417,7 @@ namespace SqlParser.Core.Statements
                     node.ChildNodes.Add(e.Item3);
 
                     return node;
-                }).Or(expression);
+                }).Or(columnOrValue);
             var logicalOperator = And.Or(OrderBy.SkipAnd(Or)).Or(Not)
                 .Then(e => new SyntaxNode(new SyntaxToken
                 {
