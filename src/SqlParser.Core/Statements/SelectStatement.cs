@@ -1,6 +1,5 @@
 ﻿using Parlot.Fluent;
 using SqlParser.Core.Syntax;
-using System;
 using System.Collections.Generic;
 using System.Linq;
 using static Parlot.Fluent.Parsers;
@@ -32,7 +31,7 @@ namespace SqlParser.Core.Statements
      * 
      * alias ::= identifier | string
      * 
-     * whereClause ::= WHERE (comparisonExpression | logicalExpression)
+     * whereClause ::= WHERE (comparisonExpression | logicalExpression | bitwiseExpression)
      * 
      * logicalExpression ::= comparisonExpression AND comparisonExpression | comparisonExpression OR comparisonExpression | NOT comparisonExpression
      * 
@@ -40,6 +39,7 @@ namespace SqlParser.Core.Statements
      * 
      *                          expression < expression | expression > expression | expression <= expression | expression >= expression | boolean
      * 
+     * bitwiseExpression ::= ~ expression
      * orderByClause ::= ORDER BY columnName (, columnName)* (ASC | DESC)
      */
     public class SelectStatement : Statement
@@ -471,12 +471,24 @@ namespace SqlParser.Core.Statements
 
                     return node;
                 });
+            var bitwiseExpression = SqlParser.Tilda.And(expression)
+                .Then(e =>
+                {
+                    var node = new SyntaxNode(new SyntaxToken
+                    {
+                        Kind = SyntaxKind.TildaToken,
+                        Value = e.Item1
+                    });
+                    node.ChildNodes.Add(e.Item2);
+
+                    return node;
+                });
             var whereClause = Where
                 .Then(e => new SyntaxNode(new SyntaxToken
                 {
                     Kind = SyntaxKind.WhereKeyword,
                     Value = e
-                })).And(logicalExpression)
+                })).And(logicalExpression.Or(bitwiseExpression))
                 .Then(e =>
                 {
                     var clause = new SyntaxNode(new SyntaxToken { Kind = SyntaxKind.WhereClause });

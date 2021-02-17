@@ -29,6 +29,7 @@
         DotToken,
         AsteriskToken,
         IdentifierToken,
+        TildaToken,
 
         // Keywords
         DeleteKeyword,
