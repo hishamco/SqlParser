@@ -155,6 +155,7 @@ namespace SqlParser.Tests
         [InlineData("Select * From Products Where True")]
         [InlineData("Select * From Products Where False")]
         [InlineData("Select * From Products Where ~Id")]
+        [InlineData("Select * From Products Where IsOutOfStock(Id)")]
         [InlineData("Select * From Products Where Id=5 Order By Id")]
         [InlineData("Select * From Products Where Id = 5 Order By Id")]
         [InlineData("Select * From Products Where Id <> 5 Order By Id")]

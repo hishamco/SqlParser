@@ -31,7 +31,7 @@ namespace SqlParser.Core.Statements
      * 
      * alias ::= identifier | string
      * 
-     * whereClause ::= WHERE (comparisonExpression | logicalExpression | bitwiseExpression)
+     * whereClause ::= WHERE (comparisonExpression | logicalExpression | bitwiseExpression | functionExpression)
      * 
      * logicalExpression ::= comparisonExpression AND comparisonExpression | comparisonExpression OR comparisonExpression | NOT comparisonExpression
      * 
@@ -488,7 +488,7 @@ namespace SqlParser.Core.Statements
                 {
                     Kind = SyntaxKind.WhereKeyword,
                     Value = e
-                })).And(logicalExpression.Or(bitwiseExpression))
+                })).And(functionExpression.Or(logicalExpression).Or(bitwiseExpression))
                 .Then(e =>
                 {
                     var clause = new SyntaxNode(new SyntaxToken { Kind = SyntaxKind.WhereClause });
