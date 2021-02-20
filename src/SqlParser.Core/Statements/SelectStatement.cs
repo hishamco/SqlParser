@@ -31,7 +31,7 @@ namespace SqlParser.Core.Statements
      * 
      * alias ::= identifier | string
      * 
-     * whereClause ::= WHERE (comparisonExpression | logicalExpression | bitwiseExpression | functionExpression | likeExpression)
+     * whereClause ::= WHERE (comparisonExpression | logicalExpression | bitwiseExpression | functionExpression | likeExpression | betweenExpression)
      * 
      * logicalExpression ::= comparisonExpression AND comparisonExpression | comparisonExpression OR comparisonExpression | NOT comparisonExpression |
      * 
@@ -44,6 +44,8 @@ namespace SqlParser.Core.Statements
      * bitwiseExpression ::= ~ expression
      * 
      * likeExpression ::= expression (NOT)? Like string
+     * 
+     * betweenExpression ::= expression (NOT)? Between expression AND expression
      * 
      * orderByClause ::= ORDER BY columnName (, columnName)* (ASC | DESC)
      */
@@ -62,6 +64,7 @@ namespace SqlParser.Core.Statements
         internal protected static readonly Parser<string> Or = Terms.Text("OR", caseInsensitive: true);
         internal protected static readonly Parser<string> Not = Terms.Text("NOT", caseInsensitive: true);
         internal protected static readonly Parser<string> Like = Terms.Text("LIKE", caseInsensitive: true);
+        internal protected static readonly Parser<string> Between = Terms.Text("BETWEEN", caseInsensitive: true);
 
         public static readonly Deferred<Statement> Statement = Deferred<Statement>();
 
@@ -509,12 +512,42 @@ namespace SqlParser.Core.Statements
 
                     return node;
                 });
+            var betweenExpression = expression.And(ZeroOrOne(Not)).And(Between).And(expression).And(And).And(expression)
+                .Then(e =>
+                {
+                    var node = new SyntaxNode(new SyntaxToken
+                    {
+                        Kind = SyntaxKind.BetweenKeyword,
+                        Value = e.Item3
+                    });
+                    node.ChildNodes.Add(e.Item1);
+                    node.ChildNodes.Add(new SyntaxNode(new SyntaxToken
+                    {
+                        Kind = SyntaxKind.AndToken,
+                        Value = e.Item5
+                    }));
+                    node.ChildNodes.Last().ChildNodes.Add(e.Item4);
+                    node.ChildNodes.Last().ChildNodes.Add(e.Item6);
+
+                    if (e.Item2 != null)
+                    {
+                        var prevNode = node;
+                        node = new SyntaxNode(new SyntaxToken
+                        {
+                            Kind = SyntaxKind.NotToken,
+                            Value = e.Item2
+                        });
+                        node.ChildNodes.Add(prevNode);
+                    }
+
+                    return node;
+                });
             var whereClause = Where
                 .Then(e => new SyntaxNode(new SyntaxToken
                 {
                     Kind = SyntaxKind.WhereKeyword,
                     Value = e
-                })).And(functionExpression.Or(logicalExpression).Or(bitwiseExpression).Or(likeExpression))
+                })).And(functionExpression.Or(betweenExpression).Or(logicalExpression).Or(bitwiseExpression).Or(likeExpression))
                 .Then(e =>
                 {
                     var clause = new SyntaxNode(new SyntaxToken { Kind = SyntaxKind.WhereClause });

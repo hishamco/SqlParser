@@ -48,6 +48,7 @@
         TopKeyword,
         WhereKeyword,
         LikeKeyword,
+        BetweenKeyword,
 
         // Clauses
         DeleteClause,
