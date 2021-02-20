@@ -147,10 +147,13 @@ namespace SqlParser.Tests
         [InlineData("Select * From Products Where Id > 5")]
         [InlineData("Select * From Products Where Id <= 5")]
         [InlineData("Select * From Products Where Id >= 5")]
+        [InlineData("Select * From Products Where Name Like 'M%'")]
+        [InlineData("Select * From Products Where Name Not Like 'M%'")]
         [InlineData("Select * From Products Where Not Id >= 5")]
         [InlineData("Select * From Products Where Id >= 5 And Id < 10")]
         [InlineData("Select * From Products Where Id >= 5 Or Id < 10")]
         [InlineData("Select * From Products Where Not Id >= 5 Or Id < 10")]
+        [InlineData("Select * From Products Where Name Like 'M%' Or Name Like '%M'")]
         [InlineData("Select * From Products Where Products.Id = 5")]
         [InlineData("Select * From Products Where True")]
         [InlineData("Select * From Products Where False")]
@@ -164,6 +167,7 @@ namespace SqlParser.Tests
         [InlineData("Select * From Products Where Id > 5 Order By Id")]
         [InlineData("Select * From Products Where Id <= 5 Order By Id")]
         [InlineData("Select * From Products Where Id >= 5 Order By Id")]
+        [InlineData("Select * From Products Where Name Like 'M%' Or Name Like '%M' Order By Id")]
         public void ParseWhereClause(string text)
         {
             // Arrange

@@ -31,15 +31,20 @@ namespace SqlParser.Core.Statements
      * 
      * alias ::= identifier | string
      * 
-     * whereClause ::= WHERE (comparisonExpression | logicalExpression | bitwiseExpression | functionExpression)
+     * whereClause ::= WHERE (comparisonExpression | logicalExpression | bitwiseExpression | functionExpression | likeExpression)
      * 
-     * logicalExpression ::= comparisonExpression AND comparisonExpression | comparisonExpression OR comparisonExpression | NOT comparisonExpression
+     * logicalExpression ::= comparisonExpression AND comparisonExpression | comparisonExpression OR comparisonExpression | NOT comparisonExpression |
+     * 
+     *                       likeExpression AND likeExpression | likeExpression OR likeExpression | NOT likeExpression
      * 
      * comparisonExpression ::= expression = expression | expression <> expression | expression != expression
      * 
      *                          expression < expression | expression > expression | expression <= expression | expression >= expression | boolean
      * 
      * bitwiseExpression ::= ~ expression
+     * 
+     * likeExpression ::= expression (NOT)? Like string
+     * 
      * orderByClause ::= ORDER BY columnName (, columnName)* (ASC | DESC)
      */
     public class SelectStatement : Statement
@@ -56,6 +61,7 @@ namespace SqlParser.Core.Statements
         internal protected static readonly Parser<string> And = Terms.Text("AND", caseInsensitive: true);
         internal protected static readonly Parser<string> Or = Terms.Text("OR", caseInsensitive: true);
         internal protected static readonly Parser<string> Not = Terms.Text("NOT", caseInsensitive: true);
+        internal protected static readonly Parser<string> Like = Terms.Text("LIKE", caseInsensitive: true);
 
         public static readonly Deferred<Statement> Statement = Deferred<Statement>();
 
@@ -197,7 +203,7 @@ namespace SqlParser.Core.Statements
                         {
                             return null;
                         }
-                        
+
                         var aliasNode = new SyntaxNode(new SyntaxToken
                         {
                             Kind = SyntaxKind.AsKeyword,
@@ -418,24 +424,44 @@ namespace SqlParser.Core.Statements
 
                     return node;
                 }).Or(columnOrValue);
-            var logicalOperator = And.Or(OrderBy.SkipAnd(Or)).Or(Not)
+            var logicalOperator = And.Or(Terms.Text("OR ", caseInsensitive: true))
                 .Then(e => new SyntaxNode(new SyntaxToken
                 {
-                    Kind = e switch
-                    {
-                        "AND" => SyntaxKind.AndToken,
-                        "OR" => SyntaxKind.OrToken,
-                        _ => SyntaxKind.None
-                    },
+                    Kind = e == "AND" ? SyntaxKind.AndToken : SyntaxKind.OrToken,
                     Value = e
                 }));
+            var likeExpression = identifier.And(ZeroOrOne(Not)).And(Like).And(stringLiteral)
+                .Then(e =>
+                {
+                    var node = new SyntaxNode(new SyntaxToken
+                    {
+                        Kind = SyntaxKind.LikeKeyword,
+                        Value = e.Item3
+                    });
+                    node.ChildNodes.Add(e.Item1);
+                    node.ChildNodes.Add(e.Item4);
+
+                    if (e.Item2 != null)
+                    {
+                        var prevNode = node;
+                        node = new SyntaxNode(new SyntaxToken
+                        {
+                            Kind = SyntaxKind.NotToken,
+                            Value = e.Item2
+                        });
+                        node.ChildNodes.Add(prevNode);
+                    }
+
+                    return node;
+                });
+            var comparisonOrLikeExpression = likeExpression.Or(comparisonExpression);
             var logicalExpression = ZeroOrOne(Not
                     .Then(e => new SyntaxNode(new SyntaxToken
                     {
                         Kind = SyntaxKind.NotToken,
                         Value = e
-                    }))).And(comparisonExpression
-                .And(ZeroOrMany(logicalOperator.And(comparisonExpression)))
+                    }))).And(comparisonOrLikeExpression
+                .And(ZeroOrMany(logicalOperator.And(comparisonOrLikeExpression)))
                 .Then(e =>
                 {
                     var node = e.Item1;
@@ -488,7 +514,7 @@ namespace SqlParser.Core.Statements
                 {
                     Kind = SyntaxKind.WhereKeyword,
                     Value = e
-                })).And(functionExpression.Or(logicalExpression).Or(bitwiseExpression))
+                })).And(functionExpression.Or(logicalExpression).Or(bitwiseExpression).Or(likeExpression))
                 .Then(e =>
                 {
                     var clause = new SyntaxNode(new SyntaxToken { Kind = SyntaxKind.WhereClause });
@@ -500,7 +526,7 @@ namespace SqlParser.Core.Statements
                 });
             var orderByColumn = ZeroOrOne(identifier.And(SqlParser.Dot
                     .Then(e => new SyntaxNode(new SyntaxToken
-                    { 
+                    {
                         Kind = SyntaxKind.DotToken,
                         Value = e
                     }))))
@@ -535,7 +561,7 @@ namespace SqlParser.Core.Statements
                 });
             var orderByClause = OrderBy
                 .Then(e => new SyntaxNode(new SyntaxToken
-                { 
+                {
                     Kind = SyntaxKind.OrderByKeyword,
                     Value = e
                 }))
@@ -555,7 +581,7 @@ namespace SqlParser.Core.Statements
                 .Then(e =>
                 {
                     var clause = new SyntaxNode(new SyntaxToken { Kind = SyntaxKind.OrderByClause });
-                    
+
                     clause.ChildNodes.Add(e.Item1);
 
                     foreach (var node in e.Item2)

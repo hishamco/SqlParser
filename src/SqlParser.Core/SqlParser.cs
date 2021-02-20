@@ -51,8 +51,8 @@ namespace SqlParser.Core
         internal protected static readonly Parser<char> SemiColon = Terms.Char(';');
         internal protected static readonly Parser<char> Asterisk = Terms.Char('*');
         internal protected static readonly Parser<char> Dot = Terms.Char('.');
-
         internal protected static readonly Parser<char> Tilda = Terms.Char('~');
+        internal protected static readonly Parser<char> Underscore = Terms.Char('_');
 
         internal protected static readonly Parser<string> True = Terms.Text("True", caseInsensitive: true);
         internal protected static readonly Parser<string> False = Terms.Text("False", caseInsensitive: true);

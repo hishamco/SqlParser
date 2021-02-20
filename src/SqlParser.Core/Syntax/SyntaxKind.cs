@@ -47,6 +47,7 @@
         DistinctKeyword,
         TopKeyword,
         WhereKeyword,
+        LikeKeyword,
 
         // Clauses
         DeleteClause,
