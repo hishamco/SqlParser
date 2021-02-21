@@ -49,6 +49,7 @@
         WhereKeyword,
         LikeKeyword,
         BetweenKeyword,
+        InKeyword,
 
         // Clauses
         DeleteClause,
