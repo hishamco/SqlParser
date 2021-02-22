@@ -47,7 +47,9 @@ namespace SqlParser.Core.Statements
      * 
      * betweenExpression ::= expression (NOT)? Between expression AND expression
      * 
-     * inExpression ::= expression (NOT)? IN ( valuesList )
+     * inExpression ::= expression (NOT)? IN ( valuesList | subQuery )
+     * 
+     * subQuery ::= SELECT columnName FROM tableName (whereClause)?
      * 
      * orderByClause ::= ORDER BY columnName (, columnName)* (ASC | DESC)
      */
@@ -545,12 +547,41 @@ namespace SqlParser.Core.Statements
 
                     return node;
                 });
-            var inExpression = expression.And(ZeroOrOne(Not)).And(In).And(SqlParser.OpenParen
-                    .Then(e => new SyntaxNode(new SyntaxToken
+            var subQuery = Select.And(identifier).And(From).And(identifier)
+                .Then(e =>
+                {
+                    var selectStatement = new SyntaxNode(new SyntaxToken
                     {
-                        Kind = SyntaxKind.OpenParenthesisToken,
-                        Value = e
-                    }))).And(Separated(SqlParser.Comma, expression)
+                        Kind = SyntaxKind.SelectStatement
+                    });
+                    var selectClause = new SyntaxNode(new SyntaxToken
+                    { 
+                        Kind = SyntaxKind.SelectClause
+                    });
+                    selectClause.ChildNodes.Add(new SyntaxNode(new SyntaxToken
+                    {
+                        Kind = SyntaxKind.SelectKeyword,
+                        Value = e.Item1
+                    }));
+                    selectClause.ChildNodes.Add(e.Item2);
+                    
+                    var fromClause = new SyntaxNode(new SyntaxToken
+                    {
+                        Kind = SyntaxKind.FromClause
+                    });
+                    fromClause.ChildNodes.Add(new SyntaxNode(new SyntaxToken
+                    {
+                        Kind = SyntaxKind.FromKeyword,
+                        Value = e.Item3
+                    }));
+                    fromClause.ChildNodes.Add(e.Item4);
+
+                    selectStatement.ChildNodes.Add(selectClause);
+                    selectStatement.ChildNodes.Add(fromClause);
+
+                    return selectStatement;
+                });
+            var listOrSubQuery = subQuery.Then(e => new List<SyntaxNode> { e }).Or(Separated(SqlParser.Comma, expression))
                     .Then(e =>
                     {
                         for (int i = 1; i < e.Count; i += 2)
@@ -563,7 +594,13 @@ namespace SqlParser.Core.Statements
                         }
 
                         return e;
-                    }))
+                    });
+            var inExpression = expression.And(ZeroOrOne(Not)).And(In).And(SqlParser.OpenParen
+                    .Then(e => new SyntaxNode(new SyntaxToken
+                    {
+                        Kind = SyntaxKind.OpenParenthesisToken,
+                        Value = e
+                    }))).And(listOrSubQuery)
                     .And(SqlParser.CloseParen
                     .Then(e => new SyntaxNode(new SyntaxToken
                     {
